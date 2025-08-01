@@ -1,0 +1,101 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}Manage Advertisements - Online Affiliates{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Manage Advertisements</h1>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('admin.admin_add_advertisement') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Advertisement
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Advertisement Listing</h6>
+        </div>
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="table-responsive">
+                {% if advertisements %}
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Title</th>
+                            <th>Active</th>
+                            <th>Associated Product</th>
+                            <th>Dates</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ad in advertisements %}
+                        <tr>
+                            <td>{{ ad.id }}</td>
+                            <td>{{ ad.type | capitalize }}</td>
+                            <td>{{ ad.title }}</td>
+                            <td>
+                                <span class="badge {% if ad.is_active %}bg-success{% else %}bg-danger{% endif %} text-white">
+                                    {% if ad.is_active %}Yes{% else %}No{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if ad.product %}
+                                    <a href="{{ url_for('admin.admin_edit_product', product_id=ad.product.id) }}" target="_blank">
+                                        {{ ad.product.nombre }}
+                                    </a>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ad.start_date and ad.end_date %}
+                                    {{ ad.start_date.strftime('%Y-%m-%d') }} to {{ ad.end_date.strftime('%Y-%m-%d') }}
+                                {% elif ad.start_date %}
+                                    From {{ ad.start_date.strftime('%Y-%m-%d') }}
+                                {% elif ad.end_date %}
+                                    Until {{ ad.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    Always
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.admin_edit_advertisement', ad_id=ad.id) }}" class="btn btn-info btn-sm me-1" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ url_for('admin.admin_toggle_active_advertisement', ad_id=ad.id) }}" method="POST" class="d-inline">
+                                    {{ form.csrf_token }}
+                                    <button type="submit" class="btn {% if ad.is_active %}btn-warning{% else %}btn-success{% endif %} btn-sm me-1" title="{% if ad.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i class="fas {% if ad.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('admin.admin_delete_advertisement', ad_id=ad.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este anuncio? Esta acción no se puede deshacer.');">
+                                    {{ form.csrf_token }}
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-center">No hay anuncios registrados todavía.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

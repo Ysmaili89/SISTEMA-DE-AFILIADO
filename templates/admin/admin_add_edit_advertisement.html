@@ -1,0 +1,194 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block title %}
+    {% if ad %}Editar Anuncio{% else %}Añadir Nuevo Anuncio{% endif %} - Afiliados Online
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{% if ad %}Editar Anuncio{% else %}Añadir Nuevo Anuncio{% endif %}</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Formulario de Anuncio</h6>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {{ form.csrf_token }}
+
+                <div class="mb-3">
+                    {{ form.type.label(class="form-label") }}
+                    {{ form.type(class="form-select", id="type") }}
+                    {% if form.type.errors %}
+                        <div class="text-danger">
+                            {% for error in form.type.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.title.label(class="form-label") }}
+                    {{ form.title(class="form-control", id="title") }}
+                    {% if form.title.errors %}
+                        <div class="text-danger">
+                            {% for error in form.title.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3 form-check">
+                    {{ form.is_active(class="form-check-input", id="is_active") }}
+                    {{ form.is_active.label(class="form-check-label", for="is_active") }}
+                    {% if form.is_active.errors %}
+                        <div class="text-danger">
+                            {% for error in form.is_active.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <hr>
+                <h5>Contenido Específico por Tipo de Anuncio</h5>
+
+                <div class="mb-3" id="group_text_content">
+                    {{ form.text_content.label(class="form-label") }}
+                    {{ form.text_content(class="form-control", rows="3", id="text_content") }}
+                    {% if form.text_content.errors %}
+                        <div class="text-danger">
+                            {% for error in form.text_content.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_button_text">
+                    {{ form.button_text.label(class="form-label") }}
+                    {{ form.button_text(class="form-control", id="button_text") }}
+                    {% if form.button_text.errors %}
+                        <div class="text-danger">
+                            {% for error in form.button_text.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_button_url">
+                    {{ form.button_url.label(class="form-label") }}
+                    {{ form.button_url(class="form-control", id="button_url") }}
+                    {% if form.button_url.errors %}
+                        <div class="text-danger">
+                            {% for error in form.button_url.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_product">
+                    {{ form.product.label(class="form-label") }}
+                    {{ form.product(class="form-select", id="product") }}
+                    {% if form.product.errors %}
+                        <div class="text-danger">
+                            {% for error in form.product.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_image_url">
+                    {{ form.image_url.label(class="form-label") }}
+                    {{ form.image_url(class="form-control", id="image_url") }}
+                    {% if form.image_url.errors %}
+                        <div class="text-danger">
+                            {% for error in form.image_url.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_adsense_client_id">
+                    {{ form.adsense_client_id.label(class="form-label") }}
+                    {{ form.adsense_client_id(class="form-control", id="adsense_client_id") }}
+                    {% if form.adsense_client_id.errors %}
+                        <div class="text-danger">
+                            {% for error in form.adsense_client_id.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3" id="group_adsense_slot_id">
+                    {{ form.adsense_slot_id.label(class="form-label") }}
+                    {{ form.adsense_slot_id(class="form-control", id="adsense_slot_id") }}
+                    {% if form.adsense_slot_id.errors %}
+                        <div class="text-danger">
+                            {% for error in form.adsense_slot_id.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <hr>
+                <h5>Programación (Opcional)</h5>
+
+                <div class="mb-3">
+                    {{ form.start_date.label(class="form-label") }}
+                    {{ form.start_date(class="form-control", id="start_date") }}
+                    {% if form.start_date.errors %}
+                        <div class="text-danger">
+                            {% for error in form.start_date.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    {{ form.end_date.label(class="form-label") }}
+                    {{ form.end_date(class="form-control", id="end_date") }}
+                    {% if form.end_date.errors %}
+                        <div class="text-danger">
+                            {% for error in form.end_date.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('admin.admin_advertisements') }}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const adTypeSelect = document.getElementById('type');
+
+    // Grupos contenedores de campos específicos, por id
+    const groups = {
+        text_content: document.getElementById('group_text_content'),
+        button_text: document.getElementById('group_button_text'),
+        button_url: document.getElementById('group_button_url'),
+        product: document.getElementById('group_product'),
+        image_url: document.getElementById('group_image_url'),
+        adsense_client_id: document.getElementById('group_adsense_client_id'),
+        adsense_slot_id: document.getElementById('group_adsense_slot_id')
+    };
+
+    function toggleFields() {
+        const selectedType = adTypeSelect.value;
+
+        // Ocultar todos al inicio
+        Object.values(groups).forEach(el => el.style.display = 'none');
+
+        // Mostrar según tipo
+        if (selectedType === 'destacado' || selectedType === 'mas_vendido') {
+            groups.text_content.style.display = 'block';
+            groups.button_text.style.display = 'block';
+            groups.button_url.style.display = 'block';
+        } else if (selectedType === 'recomendado') {
+            groups.product.style.display = 'block';
+            groups.image_url.style.display = 'block';
+        } else if (selectedType === 'patrocinado' || selectedType === 'relevante') {
+            groups.adsense_client_id.style.display = 'block';
+            groups.adsense_slot_id.style.display = 'block';
+        }
+    }
+
+    // Ejecutar al cargar y cuando cambie selección
+    toggleFields();
+    adTypeSelect.addEventListener('change', toggleFields);
+});
+</script>
+{% endblock %}

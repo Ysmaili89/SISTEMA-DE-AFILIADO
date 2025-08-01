@@ -1,0 +1,56 @@
+<div class="row">
+  <section class="col-md-8 row">
+    {% for p in productos %}
+    <article class="col-12 col-md-6 col-lg-3 mb-4 d-flex align-items-stretch">
+      <!-- contenido de tarjeta -->
+    </article>
+    {% endfor %}
+  </section>
+
+  {% if adsense_client_id and (adsense_slot_1 or adsense_slot_2 or adsense_slot_3) %}
+  <aside class="col-md-4">
+    <h3 class="mb-4">Publicidad</h3>
+
+    {% if adsense_slot_1 %}
+    <section class="ad-box mb-4 border rounded shadow-sm p-3 bg-light">
+      <span class="badge bg-warning text-dark mb-2">Anuncio patrocinado</span>
+      <ins class="adsbygoogle"
+           style="display:block; text-align:center;"
+           data-ad-client="{{ adsense_client_id }}"
+           data-ad-slot="{{ adsense_slot_1 }}"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </section>
+    {% endif %}
+
+    {% if adsense_slot_2 %}
+    <section class="ad-box mb-4 border rounded shadow-sm p-3 bg-light">
+      <span class="badge bg-warning text-dark mb-2">Anuncio patrocinado</span>
+      <ins class="adsbygoogle"
+           style="display:block; text-align:center;"
+           data-ad-client="{{ adsense_client_id }}"
+           data-ad-slot="{{ adsense_slot_2 }}"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </section>
+    {% endif %}
+
+    {% if adsense_slot_3 %}
+    <section class="ad-box mb-4 border rounded shadow-sm p-3 bg-light">
+      <span class="badge bg-warning text-dark mb-2">Anuncio patrocinado</span>
+      <ins class="adsbygoogle"
+           style="display:block; text-align:center;"
+           data-ad-client="{{ adsense_client_id }}"
+           data-ad-slot="{{ adsense_slot_3 }}"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </section>
+    {% endif %}
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  </aside>
+  {% endif %}
+</div>

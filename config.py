@@ -4,9 +4,15 @@ class Config:
     # Clave secreta de seguridad para sesiones, tokens, etc.
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'una_clave_secreta_por_defecto_solo_para_desarrollo_local'
     
-    # URL de la base de datos: primero intenta con DATABASE_URL (Render), si no usa SQLite local.
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or \
+    # Obtener la URL original
+    uri = os.getenv('DATABASE_URL') or \
         'sqlite:///' + os.path.join(os.path.abspath(os.path.dirname(__file__)), 'app.db')
+
+    # Reemplazar el esquema si es PostgreSQL
+    if uri.startswith("postgresql://"):
+        uri = uri.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    SQLALCHEMY_DATABASE_URI = uri
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

@@ -2,7 +2,7 @@ services:
   - type: web
     name: afiliados-app
     env: python
-    pythonVersion: "3.11"         # <--- Aquí configuras Python 3.11
+    pythonVersion: "3.11"
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn --bind 0.0.0.0:$PORT main:app"
 

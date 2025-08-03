@@ -427,6 +427,7 @@ def search_results():
 
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
 
+
     return render_template('search_results.html',
         query=query,
         productos=productos_found,

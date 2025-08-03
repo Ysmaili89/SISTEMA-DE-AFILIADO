@@ -1,6 +1,15 @@
-from extensions import db
+# Standard library imports
+# Standard library imports
+import os
+from datetime import datetime, date, timezone
+
+# Third-party imports
 from flask_login import UserMixin
-from datetime import datetime, timezone, date
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
+# Local application imports
+from extensions import db
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -171,11 +180,10 @@ class AdsenseConfig(db.Model):
     adsense_slot_1 = db.Column(db.String(50), nullable=True) # Made nullable as per app.py's default empty string
     adsense_slot_2 = db.Column(db.String(50), nullable=True) # Made nullable
     adsense_slot_3 = db.Column(db.String(50), nullable=True) # Made nullable
-    # Add an optional status field if you want to enable/disable config easily
+    # Add an optional status field if you want to easily enable/disable config
     status = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
-
 
     def __repr__(self):
         return f"<AdsenseConfig {self.adsense_client_id}>"

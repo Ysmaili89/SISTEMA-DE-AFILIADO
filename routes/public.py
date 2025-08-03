@@ -382,6 +382,8 @@ def robots_txt():
         "Sitemap: " + request.url_root.rstrip('/') + url_for('publico.sitemap') + "\n"
     )
 
+# ... (rest of your code)
+
 @bp.route('/buscar')
 def search_results():
     """
@@ -424,7 +426,6 @@ def search_results():
             print(f"     - Article: {a.titulo} (ID: {a.id})")
 
         total_articles_pages = articulos_pagination.pages
-
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
 
 

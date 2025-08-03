@@ -10,9 +10,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 # Local application imports
-from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig, SocialMediaLink
 from forms import PublicTestimonialForm
-from extensions import db # Corrected 'De extensiones Importar DB'
+from extensions import db
 
 # Load environment variables as early as possible
 load_dotenv()
@@ -24,9 +24,10 @@ bp = Blueprint('publico', __name__)
 print(f"DEBUG (public.py): OPENAI_API_KEY value loaded: {os.getenv('OPENAI_API_KEY')}")
 
 # Configure the OpenAI client
-try: # Corrected 'Intente:'
+try:
+    # Ensure there is no 'proxies' argument here, as per your previous error log
     openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except Exception as e: # Corrected 'excepto la excepción como e:'
+except Exception as e:
     print(f"Error initializing OpenAI client in public.py: {e}. Ensure OPENAI_API_KEY is configured.")
     openai_client = None
 
@@ -38,7 +39,7 @@ def get_all_products_for_chatbot():
     Returns a list of dictionaries containing product ID, name, price, description, and link.
     Handles possible database errors.
     """
-    try: # Corrected 'Intente:'
+    try:
         products = Producto.query.all()
         products_data = []
         for p in products:
@@ -50,7 +51,7 @@ def get_all_products_for_chatbot():
                 "link": p.link
             })
         return products_data
-    except Exception as e: # Corrected 'excepto la excepción como e:'
+    except Exception as e:
         print(f"Error getting products for chatbot: {e}")
         return []
 
@@ -109,6 +110,17 @@ def get_general_help_info():
 
 ### Context Processors
 
+@bp.context_processor
+def inject_social_media_links():
+    """
+    Injects social media links into the template context.
+    """
+    try:
+        links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
+        return dict(social_media_links=links)
+    except Exception as e:
+        print(f"Error injecting social media links: {e}")
+        return dict(social_media_links=[])
 
 @bp.context_processor
 def inject_active_advertisements():
@@ -131,17 +143,15 @@ def inject_adsense_config():
     fetching the data from the database.
     """
     adsense_config_db = AdsenseConfig.query.first()
-# In routes/public.py, inside inject_adsense_config
-
-    if adsense_config_db: # Corrected 'Si' to 'if'
+    if adsense_config_db:
         return dict(
-            adsense_client_id=adsense_config_db.adsense_client_id, # Added this back
-            adsense_slot_header=adsense_config_db.adsense_slot_1, # Assuming slot_1 for header
-            adsense_slot_sidebar=adsense_config_db.adsense_slot_2, # Corrected to use existing slot_2
-            adsense_slot_content=adsense_config_db.adsense_slot_3, # Corrected to use existing slot_3
+            adsense_client_id=adsense_config_db.adsense_client_id,
+            adsense_slot_header=adsense_config_db.adsense_slot_1,
+            adsense_slot_sidebar=adsense_config_db.adsense_slot_2,
+            adsense_slot_content=adsense_config_db.adsense_slot_3,
             adsense_slot_footer='' # Or assign another existing slot, or keep it empty if not available
         )
-    else: # Corrected 'más' to 'else'
+    else:
         return dict(
             adsense_client_id='',
             adsense_slot_header='',
@@ -200,7 +210,7 @@ def productos_por_slug(slug):
         return render_template('productos_por_subcategoria.html',
                                subcat_name=subcat.nombre,
                                productos=products_in_subcat,
-                               page=page, # Corrected 'página=página,'
+                               page=page,
                                total_pages=total_pages)
     flash('Subcategoría no encontrada.', 'danger')
     return redirect(url_for('publico.show_categorias'))
@@ -243,11 +253,6 @@ def guia_detalle(slug):
     flash('Artículo no encontrado.', 'danger')
     return redirect(url_for('publico.guias'))
 
-
-
-
-# ... (otras importaciones y funciones) ...
-
 @bp.route('/acerca-de', methods=['GET', 'POST'])
 def acerca_de():
     testimonial_form = PublicTestimonialForm()
@@ -263,7 +268,7 @@ def acerca_de():
             new_testimonial = Testimonial(
                 author=testimonial_form.author.data,
                 content=testimonial_form.content.data,
-                is_visible=False, # Testimonials are not visible by default, awaiting admin approval
+                is_visible=False,
                 date_posted=datetime.now(timezone.utc)
             )
             db.session.add(new_testimonial)
@@ -275,11 +280,9 @@ def acerca_de():
             flash(f'Ocurrió un error al enviar tu testimonio. Por favor, inténtalo de nuevo. Detalles: {e}', 'danger')
             print(f"Error saving testimonial: {e}")
 
-    # ¡IMPORTANTE!: Cambia 'testimonios' a 'testimonials' aquí
     testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
     return render_template('about.html', testimonials=testimonials, testimonial_form=testimonial_form)
 
-# ... (resto de tu public.py) ...
 @bp.route('/contacto', methods=['GET', 'POST'])
 def contacto():
     """Renders the contact page and handles form submissions."""
@@ -385,9 +388,7 @@ def search_results():
     page = request.args.get('page', 1, type=int)
     per_page = 9
 
-    # --- ADD THIS DEBUG PRINT STATEMENT ---
     print(f"DEBUG: Search query received: '{query}'")
-    # -------------------------------------
 
     productos_found = []
     articulos_found = []
@@ -406,35 +407,31 @@ def search_results():
         productos_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
         productos_found = productos_pagination.items
 
-        # --- ADD THESE DEBUG PRINT STATEMENTS ---
         print(f"DEBUG: Found {len(productos_found)} products for query '{query}'")
         for p in productos_found:
             print(f"     - Product: {p.nombre} (ID: {p.id})")
-        # -------------------------------------
 
         total_products_pages = productos_pagination.pages
 
         articulos_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
         articulos_found = articulos_pagination.items
 
-        # --- ADD THESE DEBUG PRINT STATEMENTS ---
         print(f"DEBUG: Found {len(articulos_found)} articles for query '{query}'")
         for a in articulos_found:
             print(f"     - Article: {a.titulo} (ID: {a.id})")
-        # -------------------------------------
 
         total_articles_pages = articulos_pagination.pages
 
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
 
     return render_template('search_results.html',
-                           query=query,
-                           productos=productos_found,
-                           articulos=articulos_found,
-                           page=page, # Corrected 'página=página,'
-                           total_pages=total_pages)
+        query=query,
+        productos=productos_found,
+        articulos=articulos_found,
+        page=page,
+        total_pages=total_pages)
 
-### Affiliate User Interface and API Routes
+### Interfaz de usuario de afiliados y rutas API
 
 @bp.route('/ref/<int:afiliado_id>')
 def register_click(afiliado_id):
@@ -443,18 +440,18 @@ def register_click(afiliado_id):
     estadistica = EstadisticaAfiliado.query.filter_by(
         afiliado_id=afiliado.id,
         fecha=date.today()
-    ).first() # Corrected '.primero()'
+    ).first()
 
     if estadistica:
-        estadistica.clics += 1 # Assuming 'clics' is the correct attribute name in your model
-    else: # Corrected 'más:'
+        estadistica.clicks += 1
+    else:
         estadistica = EstadisticaAfiliado(
             afiliado_id=afiliado.id,
-            clics=1, # Assuming 'clics' is the correct attribute name in your model
+            clicks=1,
             fecha=date.today()
         )
         db.session.add(estadistica)
 
     db.session.commit()
 
-    return redirect(afiliado.enlace_referido) # Ensure 'enlace_referido' is the correct attribute name for the affiliate URL in your Afiliado model
+    return redirect(afiliado.referral_link)

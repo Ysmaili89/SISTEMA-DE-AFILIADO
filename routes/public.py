@@ -23,14 +23,15 @@ bp = Blueprint('publico', __name__)
 # Debug line to check API key loading
 print(f"DEBUG (public.py): OPENAI_API_KEY value loaded: {os.getenv('OPENAI_API_KEY')}")
 
-# Configure the OpenAI client
-# Configure the OpenAI client
+
+# Configurar clave de API para OpenAI
 try:
-    # Ensure there is no 'proxies' argument here, as per your previous error log
-    openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if not openai.api_key:
+        raise ValueError("OPENAI_API_KEY is not set.")
 except Exception as e:
     print(f"Error initializing OpenAI client in public.py: {e}. Ensure OPENAI_API_KEY is configured.")
-    openai_client = None
+
 
 
 # --- Helper functions for chatbot tools ---

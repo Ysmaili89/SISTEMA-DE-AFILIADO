@@ -88,11 +88,8 @@ class SocialMediaLink(db.Model):
     url = db.Column(db.String(255))
     icon_class = db.Column(db.String(100))
     is_visible = db.Column(db.Boolean, default=True)
-    order_num = db.Column(db.Integer)  # <- Add this line
-
-
-
-
+    order_num = db.Column(db.Integer)  # <-- Make sure this exists
+    
     def __repr__(self):
         return f'<SocialMediaLink {self.platform}>'
 

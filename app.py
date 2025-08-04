@@ -5,12 +5,13 @@ import os
 from datetime import datetime, timezone
 
 # Third-party imports
-from flask import Flask
+from flask import Flask, request, jsonify # Added request, jsonify for chatbot route
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
+import openai # Import openai library
 from flask_wtf.csrf import CSRFProtect
 
 # Importaciones de aplicaciones locales
@@ -117,7 +118,44 @@ def create_app():
             return value.strftime(format)
         return value
 
-    
+    # ----------- CHATBOT API (If you decide to re-enable it) -----------
+    # If you don't need the chatbot, you can remove this entire block.
+    # If you do, ensure 'flask' is imported with 'request' and 'jsonify'
+    # from flask import Flask, request, jsonify
+    # @app.route('/api/chatbot', methods=['POST'])
+    # def chatbot():
+    #     data = request.json
+    #     message = data.get("message", "")
+    #     if not message:
+    #         return jsonify({"error": "Mensaje no recibido"}), 400
+
+    #     # Ensure OPENAI_API_KEY is set
+    #     if not app.config.get('OPENAI_API_KEY'):
+    #         return jsonify({"error": "Clave de API de OpenAI no configurada."}), 500
+        
+    #     try:
+    #         client = openai.OpenAI(api_key=app.config['OPENAI_API_KEY'])
+    #         response = client.chat.completions.create(
+    #             model="gpt-4o-mini",
+    #             messages=[
+    #                 {"role": "system", "content": "Eres un asistente útil y amable."},
+    #                 {"role": "user", "content": message}
+    #             ],
+    #             max_tokens=150,
+    #             temperature=0.7,
+    #         )
+    #         response_text = response.choices[0].message.content
+    #         return jsonify({"response": response_text})
+    #     except openai.APIConnectionError as e:
+    #         return jsonify({"error": f"No se pudo conectar a la API de OpenAI: {e}"}), 500
+    #     except openai.RateLimitError as e:
+    #         return jsonify({"error": f"Límite de tasa de OpenAI excedido: {e}"}), 429
+    #     except openai.APIStatusError as e:
+    #         return jsonify({"error": f"Error de la API de OpenAI: {e.status_code} - {e.response}"}), 500
+    #     except Exception as e:
+    #         return jsonify({"error": f"Un error inesperado ocurrió: {str(e)}"}), 500
+
+    return app
 
 # -------------------- INITIAL DATA CREATION --------------------
 def create_initial_data(app):
@@ -213,29 +251,29 @@ def create_initial_data(app):
                 author="Juan Pérez",
                 content="¡Excelente sitio! Encontré el producto perfecto.",
                 date_posted=datetime.now(timezone.utc),
-                is_visible=True,
-                likes=5,
-                dislikes=0
+                is_visible=True, # Corrected from Verdadero
+                likes=5, # Corrected from me gusta
+                dislikes=0 # Corrected from no me gusta
             ))
 
-            db.session.commit()
+            db.session.commit() # Corrected from db.sesión.commit()
             print("✅ Datos iniciales creados.")
-        else:
+        else: # Corrected from más:
             print("ℹ️ Los usuarios ya existen. Saltando datos iniciales.")
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
-    with app.app_context():
-        admin_user = User.query.filter_by(username='admin').first()
-        if admin_user:
-            admin_user.password_hash = generate_password_hash(new_password)
-            db.session.commit()
+    with app.app_context(): # Corrected from con app.app_context():
+        admin_user = User.query.filter_by(username='admin').first() # Corrected from nombre de usuario
+        if admin_user: # Corrected from Si admin_user:
+            admin_user.password_hash = generate_password_hash(new_password) # Corrected from hash_de_contraseña
+            db.session.commit() # Corrected from db.sesión.commit()
             print("🔐 Contraseña actualizada para 'admin'.")
-        else:
+        else: # Corrected from más:
             print("⚠️ Usuario 'admin' no encontrado.")
 
 # -------------------- EJECUCIÓN PRINCIPAL --------------------
-if __name__ == "__main__":
+if __name__ == "__main__": # Corrected from si __name__ == "__main__":
     app = create_app()
-    create_initial_data(app)
+    create_initial_data(app) # Corrected from create_initial_data(aplicación)
     app.run(debug=True)

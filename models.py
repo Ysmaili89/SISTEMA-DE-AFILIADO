@@ -84,11 +84,12 @@ class SyncInfo(db.Model):
 
 class SocialMediaLink(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    platform = db.Column(db.String(50), nullable=False)
-    url = db.Column(db.String(200), nullable=False)
-    icon_class = db.Column(db.String(50))
+    platform = db.Column(db.String(50))
+    url = db.Column(db.String(255))
+    icon_class = db.Column(db.String(100))
     is_visible = db.Column(db.Boolean, default=True)
-    order_num = db.Column(db.Integer, default=0, nullable=False) # The missing column
+    order_num = db.Column(db.Integer)  # <- Add this line
+
 
 
 

@@ -43,7 +43,7 @@ def create_app():
     # MODIFICACIÓN CLAVE AQUÍ: Usamos la URI de la base de datos de config.py directamente
     # o un valor predeterminado de SQLite si no está en config.py
     # Esto ignora cualquier variable de entorno DATABASE_URL que pueda estar causando conflicto
-    from config import Config # Importamos la clase Config
+    from config import Config
     app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['BABEL_DEFAULT_LOCALE'] = 'es'
@@ -232,7 +232,7 @@ def create_initial_data(app):
                     imagen=f'https://placehold.co/800x400/e0e0e0/555555?text={imagen_texto}'
                 ))
 
-            # Social media links
+            # --- CORRECTED CODE FOR SOCIAL MEDIA LINKS ---
             redes = [
                 ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
                 ('X', 'https://x.com', 'fab fa-x-twitter'),
@@ -240,8 +240,8 @@ def create_initial_data(app):
                 ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
                 ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
             ]
-            for nombre, url, icono in redes:
-                db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
+            for i, (nombre, url, icono) in enumerate(redes, 1):
+                db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True, order_num=i))
 
             # Testimonial
             db.session.add(Testimonial(

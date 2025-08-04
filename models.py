@@ -81,15 +81,16 @@ class SyncInfo(db.Model):
     def __repr__(self):
         return f'<SyncInfo {self.last_sync_time}>'
 
+
 class SocialMediaLink(db.Model):
-    __tablename__ = 'social_media_link'
     id = db.Column(db.Integer, primary_key=True)
-    platform = db.Column(db.String(50), unique=True, nullable=False)
-    url = db.Column(db.String(255), nullable=False)
-    icon_class = db.Column(db.String(100), nullable=True) # e.g., 'fab fa-facebook-f'
-    is_visible = db.Column(db.Boolean, default=True, nullable=False)
-    # Added order_num for sorting, as used in app.py's inject_social_media_links
-    order_num = db.Column(db.Integer, default=0, nullable=False)
+    platform = db.Column(db.String(50), nullable=False)
+    url = db.Column(db.String(200), nullable=False)
+    icon_class = db.Column(db.String(50))
+    is_visible = db.Column(db.Boolean, default=True)
+    order_num = db.Column(db.Integer, default=0, nullable=False) # The missing column
+
+
 
     def __repr__(self):
         return f'<SocialMediaLink {self.platform}>'

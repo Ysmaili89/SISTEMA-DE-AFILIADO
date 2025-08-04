@@ -5,13 +5,12 @@ import os
 from datetime import datetime, timezone
 
 # Third-party imports
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
-import openai
 from flask_wtf.csrf import CSRFProtect
 
 # Importaciones de aplicaciones locales
@@ -118,41 +117,7 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- CHATBOT API -----------
-    @app.route('/api/chatbot', methods=['POST'])
-    def chatbot():
-        data = request.json
-        message = data.get("message", "")
-        if not message:
-            return jsonify({"error": "Mensaje no recibido"}), 400
-
-        # Ensure OPENAI_API_KEY is set
-        if not app.config.get('OPENAI_API_KEY'):
-            return jsonify({"error": "OpenAI API key no configurada."}), 500
-        
-        try:
-            client = openai.OpenAI(api_key=app.config['OPENAI_API_KEY'])
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Eres un asistente útil y amable."},
-                    {"role": "user", "content": message}
-                ],
-                max_tokens=150,
-                temperature=0.7,
-            )
-            response_text = response.choices[0].message.content
-            return jsonify({"response": response_text})
-        except openai.APIConnectionError as e:
-            return jsonify({"error": f"No se pudo conectar a la API de OpenAI: {e}"}), 500
-        except openai.RateLimitError as e:
-            return jsonify({"error": f"Límite de tasa de OpenAI excedido: {e}"}), 429
-        except openai.APIStatusError as e:
-            return jsonify({"error": f"Error de la API de OpenAI: {e.status_code} - {e.response}"}), 500
-        except Exception as e:
-            return jsonify({"error": f"Un error inesperado ocurrió: {str(e)}"}), 500
-
-    return app
+    
 
 # -------------------- INITIAL DATA CREATION --------------------
 def create_initial_data(app):

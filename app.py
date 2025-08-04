@@ -11,7 +11,7 @@ from flask_migrate import Migrate
 from flask_moment import Moment
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
-# import openai # Removed openai import
+# import openai # THIS LINE HAS BEEN REMOVED
 from flask_wtf.csrf import CSRFProtect
 
 # Importaciones de aplicaciones locales

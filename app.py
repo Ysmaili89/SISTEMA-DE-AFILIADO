@@ -5,13 +5,13 @@ import os
 from datetime import datetime, timezone
 
 # Third-party imports
-from flask import Flask, request, jsonify # Added request, jsonify for chatbot route
+from flask import Flask # Removed request, jsonify as they are only needed for chatbot
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
-import openai # Import openai library
+# import openai # Removed openai import
 from flask_wtf.csrf import CSRFProtect
 
 # Importaciones de aplicaciones locales
@@ -40,14 +40,11 @@ def create_app():
 
     # ----------- BASIC CONFIGURATIONS -----------
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key')
-    # MODIFICACIÓN CLAVE AQUÍ: Usamos la URI de la base de datos de config.py directamente
-    # o un valor predeterminado de SQLite si no está en config.py
-    # Esto ignora cualquier variable de entorno DATABASE_URL que pueda estar causando conflicto
     from config import Config
     app.config['SQLALCHEMY_DATABASE_URI'] = Config.SQLALCHEMY_DATABASE_URI
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['BABEL_DEFAULT_LOCALE'] = 'es'
-    app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
+    # app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY') # Removed OpenAI API key config
 
     # ----------- EXTENSIONS -----------
     db.init_app(app)
@@ -118,42 +115,9 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- CHATBOT API (If you decide to re-enable it) -----------
-    # If you don't need the chatbot, you can remove this entire block.
-    # If you do, ensure 'flask' is imported with 'request' and 'jsonify'
-    # from flask import Flask, request, jsonify
-    # @app.route('/api/chatbot', methods=['POST'])
-    # def chatbot():
-    #     data = request.json
-    #     message = data.get("message", "")
-    #     if not message:
-    #         return jsonify({"error": "Mensaje no recibido"}), 400
-
-    #     # Ensure OPENAI_API_KEY is set
-    #     if not app.config.get('OPENAI_API_KEY'):
-    #         return jsonify({"error": "Clave de API de OpenAI no configurada."}), 500
-        
-    #     try:
-    #         client = openai.OpenAI(api_key=app.config['OPENAI_API_KEY'])
-    #         response = client.chat.completions.create(
-    #             model="gpt-4o-mini",
-    #             messages=[
-    #                 {"role": "system", "content": "Eres un asistente útil y amable."},
-    #                 {"role": "user", "content": message}
-    #             ],
-    #             max_tokens=150,
-    #             temperature=0.7,
-    #         )
-    #         response_text = response.choices[0].message.content
-    #         return jsonify({"response": response_text})
-    #     except openai.APIConnectionError as e:
-    #         return jsonify({"error": f"No se pudo conectar a la API de OpenAI: {e}"}), 500
-    #     except openai.RateLimitError as e:
-    #         return jsonify({"error": f"Límite de tasa de OpenAI excedido: {e}"}), 429
-    #     except openai.APIStatusError as e:
-    #         return jsonify({"error": f"Error de la API de OpenAI: {e.status_code} - {e.response}"}), 500
-    #     except Exception as e:
-    #         return jsonify({"error": f"Un error inesperado ocurrió: {str(e)}"}), 500
+    # ----------- CHATBOT API (Removed) -----------
+    # The entire chatbot API route and its logic have been removed.
+    # If you need it back, uncomment this block and re-add 'request', 'jsonify' to Flask import.
 
     return app
 
@@ -251,29 +215,29 @@ def create_initial_data(app):
                 author="Juan Pérez",
                 content="¡Excelente sitio! Encontré el producto perfecto.",
                 date_posted=datetime.now(timezone.utc),
-                is_visible=True, # Corrected from Verdadero
-                likes=5, # Corrected from me gusta
-                dislikes=0 # Corrected from no me gusta
+                is_visible=True,
+                likes=5,
+                dislikes=0
             ))
 
-            db.session.commit() # Corrected from db.sesión.commit()
+            db.session.commit()
             print("✅ Datos iniciales creados.")
-        else: # Corrected from más:
+        else:
             print("ℹ️ Los usuarios ya existen. Saltando datos iniciales.")
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
-    with app.app_context(): # Corrected from con app.app_context():
-        admin_user = User.query.filter_by(username='admin').first() # Corrected from nombre de usuario
-        if admin_user: # Corrected from Si admin_user:
-            admin_user.password_hash = generate_password_hash(new_password) # Corrected from hash_de_contraseña
-            db.session.commit() # Corrected from db.sesión.commit()
+    with app.app_context():
+        admin_user = User.query.filter_by(username='admin').first()
+        if admin_user:
+            admin_user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
             print("🔐 Contraseña actualizada para 'admin'.")
-        else: # Corrected from más:
+        else:
             print("⚠️ Usuario 'admin' no encontrado.")
 
 # -------------------- EJECUCIÓN PRINCIPAL --------------------
-if __name__ == "__main__": # Corrected from si __name__ == "__main__":
+if __name__ == "__main__":
     app = create_app()
-    create_initial_data(app) # Corrected from create_initial_data(aplicación)
+    create_initial_data(app)
     app.run(debug=True)

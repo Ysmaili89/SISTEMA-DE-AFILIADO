@@ -1,5 +1,6 @@
 {# templates/partials/social_media.html #}
 <div class="social-icons d-flex justify-content-center align-items-center gap-3 mt-3">
+    {# Filter for visible links. Assuming 'social_media_links' is passed from your backend/context. #}
     {% set visible_links = social_media_links | selectattr('is_visible') | list %}
 
     {% if visible_links %}
@@ -8,13 +9,15 @@
                target="_blank"
                rel="noopener noreferrer"
                aria-label="Síguenos en {{ link.platform }}"
-               class="social-link text-white">
-                <div class="social-icon-wrapper">
+               class="social-link text-white"> {# 'social-link' class for custom styling, 'text-white' from Bootstrap #}
+                <div class="social-icon-wrapper d-flex justify-content-center align-items-center"> {# Added flexbox for icon centering #}
+                    {# Use 'fa-brands' for brand icons like Facebook, Twitter, YouTube etc. #}
+                    {# Fallback to 'fa-solid fa-link' if icon_class is not provided #}
                     <i class="{{ link.icon_class or 'fa-solid fa-link' }} fa-lg" aria-hidden="true"></i>
                 </div>
             </a>
         {% endfor %}
     {% else %}
-        <p class="no-social-links">No hay redes sociales visibles actualmente.</p>
+        <p class="no-social-links text-muted mt-2">No hay redes sociales visibles actualmente.</p>
     {% endif %}
 </div>

@@ -1,9 +1,12 @@
+# C:\Users\joran\OneDrive\data\Documentos\LMSGI\afiliados_app\forms.py
+
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, FloatField, SelectField, SubmitField, PasswordField, BooleanField, DateTimeLocalField
 from wtforms.validators import DataRequired, URL, NumberRange, Optional, Length, ValidationError, Email
 from wtforms_sqlalchemy.fields import QuerySelectField
-from models import Producto, Afiliado
+from models import Producto, Afiliado # Removed AdsenseConfig as it's not directly used here
 
+# ... (the rest of your forms.py content) ...
 # Validador personalizado para rutas relativas o URLs completas
 def validate_image_path(form, field):
     if field.data and not (
@@ -82,7 +85,7 @@ class TestimonialForm(FlaskForm):
 class PublicTestimonialForm(FlaskForm):
     author = StringField('Tu Nombre', validators=[DataRequired(), Length(min=2, max=100)])
     content = TextAreaField('Tu Testimonio', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
-    fax_number = StringField('Número de Fax (no rellenar)', validators=[Optional()])
+    fax_number = StringField('Número de Fax (no rellenar)', validators=[Optional()])  # Honeypot anti-spam
     submit = SubmitField('Enviar Testimonio')
 
 class AdvertisementForm(FlaskForm):
@@ -121,11 +124,9 @@ class AdvertisementForm(FlaskForm):
 
     submit = SubmitField('Guardar Anuncio')
 
-    # This is the corrected validate method signature
-    def validate(self, extra_validators=None):
+    def validate(self):
         # Always call the superclass validate method first
-        # It now accepts extra_validators
-        if not super().validate(extra_validators=extra_validators):
+        if not super().validate():
             return False
         
         if self.type.data == 'recomendado':
@@ -171,16 +172,16 @@ class AffiliateStatisticForm(FlaskForm):
         query_factory=lambda: Afiliado.query.order_by(Afiliado.nombre).all(),
         get_pk=lambda a: a.id,
         get_label=lambda a: a.nombre,
-        allow_blank=True,
+        allow_blank=True, # Corrected 'Verdadero' to 'True'
         blank_text='-- Todos los Afiliados --',
-        validators=[Optional()]
+        validators=[Optional()] # Corrected 'validadores=[Opcional()]' to 'validators=[Optional()]'
     )
     submit = SubmitField('Generar Reporte')
 
 # -----------------------------------------------------------------------------
 # Nuevo: Formulario de configuración de Adsense
 # -----------------------------------------------------------------------------
-class AdsenseConfigForm(FlaskForm):
+class AdsenseConfigForm(FlaskForm): # Corrected 'clase' to 'class'
     # Estos campos deben coincidir con los atributos de su modelo AdsenseConfig
     client_id = StringField('ID de Cliente AdSense (data-ad-client)', validators=[DataRequired(), Length(max=50)])
     ad_slot_header = StringField('ID de Slot para Encabezado', validators=[Optional(), Length(max=50)])

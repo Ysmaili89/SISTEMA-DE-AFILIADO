@@ -1,15 +1,6 @@
-# Standard library imports
-# Standard library imports
-import os
-from datetime import datetime, date, timezone
-
-# Third-party imports
-from flask_login import UserMixin
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
-
-# Local application imports
 from extensions import db
+from flask_login import UserMixin
+from datetime import datetime, timezone, date
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -81,15 +72,16 @@ class SyncInfo(db.Model):
     def __repr__(self):
         return f'<SyncInfo {self.last_sync_time}>'
 
-
 class SocialMediaLink(db.Model):
+    __tablename__ = 'social_media_link'
     id = db.Column(db.Integer, primary_key=True)
-    platform = db.Column(db.String(50))
-    url = db.Column(db.String(255))
-    icon_class = db.Column(db.String(100))
-    is_visible = db.Column(db.Boolean, default=True)
-    order_num = db.Column(db.Integer)  # <-- Make sure this exists
-    
+    platform = db.Column(db.String(50), unique=True, nullable=False)
+    url = db.Column(db.String(255), nullable=False)
+    icon_class = db.Column(db.String(100), nullable=True) # e.g., 'fab fa-facebook-f'
+    is_visible = db.Column(db.Boolean, default=True, nullable=False)
+    # Added order_num for sorting, as used in app.py's inject_social_media_links
+    order_num = db.Column(db.Integer, default=0, nullable=False)
+
     def __repr__(self):
         return f'<SocialMediaLink {self.platform}>'
 
@@ -179,10 +171,11 @@ class AdsenseConfig(db.Model):
     adsense_slot_1 = db.Column(db.String(50), nullable=True) # Made nullable as per app.py's default empty string
     adsense_slot_2 = db.Column(db.String(50), nullable=True) # Made nullable
     adsense_slot_3 = db.Column(db.String(50), nullable=True) # Made nullable
-    # Add an optional status field if you want to easily enable/disable config
+    # Add an optional status field if you want to enable/disable config easily
     status = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+
 
     def __repr__(self):
         return f"<AdsenseConfig {self.adsense_client_id}>"

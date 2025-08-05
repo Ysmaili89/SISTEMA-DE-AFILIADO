@@ -1,8 +1,8 @@
-# C:\Users\joran\OneDrive\data\Documentos\LMSGI\afiliados_app\app.py
+# app.py
 
 # Importaciones de bibliotecas estándar
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 # Importaciones de terceros
 from flask import Flask
@@ -18,25 +18,27 @@ import markdown # Import markdown for the template filter
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Categoria, Subcategoria,
-    Producto, Articulo, Testimonial, Afiliado, AdsenseConfig
+    Producto, Articulo, Testimonial, Afiliado, AdsenseConfig,
+    EstadisticaAfiliado
 )
-from utils import slugify # Assuming utils.py exists and contains slugify
+# Asumiendo que utils.py existe y contiene slugify
+from utils import slugify
 
 # Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
 
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
-# This is usually for local development. On Render, you set environment variables directly.
+# Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
 
 # -------------------- CONFIGURACIÓN DE FLASK-BABEL --------------------
 def get_application_locale():
-    # This function determines the locale for Flask-Babel
+    # Esta función determina el 'locale' para Flask-Babel
     return 'es'
 
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
-    # Injects social media links into the Jinja2 context
+    # Inyecta enlaces de redes sociales en el contexto de Jinja2
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
@@ -45,62 +47,60 @@ def create_app():
     app = Flask(__name__)
 
     # ----------- CONFIGURACIONES BÁSICAS -----------
-    # SECRET_KEY is essential for session security. Use an environment variable in production.
+    # SECRET_KEY es esencial para la seguridad de la sesión. Usa una variable de entorno en producción.
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key_for_dev_only')
-    # DATABASE_URL must be set as an environment variable on Render.
-    # 'sqlite:///site.db' is a fallback for local development if DATABASE_URL is not set.
+    # DATABASE_URL debe establecerse como una variable de entorno en Render.
+    # 'sqlite:///site.db' es un respaldo para el desarrollo local si DATABASE_URL no está configurada.
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['BABEL_DEFAULT_LOCALE'] = 'es'
 
     # ----------- EXTENSIONES -----------
-    # Initialize Flask extensions with the app
+    # Inicializa las extensiones de Flask con la aplicación
     db.init_app(app)
     login_manager.init_app(app)
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app) # noqa: F841 # Initialize CSRF protection
+    csrf = CSRFProtect(app) # noqa: F841 # Inicializa la protección CSRF
 
-    # Configure Flask-Login
+    # Configura Flask-Login
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
-    # ----------- DATABASE INITIALIZATION AND INITIAL DATA (MOVED HERE) -----------
-    # This block ensures the database tables are created and initial data is populated
-    # when the app starts, which is crucial for deployment with Gunicorn.
-    # It runs within the application context.
+    # ----------- INICIALIZACIÓN DE LA BASE DE DATOS Y DATOS INICIALES -----------
+    # Este bloque asegura que los datos iniciales se creen si no existen.
+    # Se ejecuta en el contexto de la aplicación, lo que es crucial para el despliegue con Gunicorn.
     with app.app_context():
-        # Create all database tables if they don't exist
-        db.create_all()
-
-        # Check if the User table is empty to avoid re-creating data on every restart
+        # IMPORTANTE: No uses db.create_all() si usas migraciones.
+        # En su lugar, usa `flask db upgrade` en la consola.
+        # Este bloque solo creará los datos si la tabla de usuarios está vacía.
         if not User.query.first():
-            print("🔧 Creando datos iniciales...")
+            print("⚙️ Creando datos iniciales...")
 
-            # Admin user
+            # Usuario admin
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
 
-            # Demo affiliate
+            # Afiliado de demostración
             if not Afiliado.query.filter_by(email='afiliado@example.com').first():
                 db.session.add(Afiliado(
                     nombre='Afiliado de Prueba',
                     email='afiliado@example.com',
-                    enlace_referido='http://localhost:5000/ref/1', # This link might need to be dynamic for production
+                    enlace_referido='http://localhost:5000/ref/1', # Este enlace podría necesitar ser dinámico para producción
                     activo=True
                 ))
 
-            # Initial AdsenseConfig
+            # Configuración inicial de Adsense
             if not AdsenseConfig.query.first():
                 db.session.add(AdsenseConfig(
-                    adsense_client_id='ca-pub-1234567890123456', # Placeholder ID
+                    adsense_client_id='ca-pub-1234567890123456', # ID de marcador de posición
                     adsense_slot_1='1111111111',
                     adsense_slot_2='2222222222',
                     adsense_slot_3='3333333333'
                 ))
 
-            # Categories and Subcategories
+            # Categorías y subcategorías
             categorias = {
                 'Tecnología': ['Smartphones', 'Laptops'],
                 'Hogar': ['Cocina', 'Jardín'],
@@ -109,11 +109,11 @@ def create_app():
             for cat, subs in categorias.items():
                 categoria = Categoria(nombre=cat, slug=slugify(cat))
                 db.session.add(categoria)
-                db.session.flush() # Flush to get ID for subcategories before adding subcategories
+                db.session.flush() # Flush para obtener el ID de las subcategorías antes de agregarlas
                 for sub in subs:
                     db.session.add(Subcategoria(nombre=sub, slug=slugify(sub), categoria=categoria))
 
-            # Products
+            # Productos
             productos = [
                 ('Smartphone Pro X', 899.99, 'Smartphone con cámara de alta resolución y batería duradera.', 'Smartphones'),
                 ('Laptop UltraBook', 1200.00, 'Laptop ligera y potente.', 'Laptops'),
@@ -122,7 +122,7 @@ def create_app():
             ]
             for nombre, precio, desc, subcat_nombre in productos:
                 subcat = Subcategoria.query.filter_by(nombre=subcat_nombre).first()
-                if subcat: # Ensure subcategory exists before adding product
+                if subcat: # Asegurarse de que la subcategoría exista antes de agregar el producto
                     db.session.add(Producto(
                         nombre=nombre,
                         slug=slugify(nombre),
@@ -133,7 +133,7 @@ def create_app():
                         subcategoria_id=subcat.id
                     ))
 
-            # Articles
+            # Artículos
             articulos = [
                 ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
@@ -148,7 +148,7 @@ def create_app():
                     imagen=f'https://placehold.co/800x400/e0e0e0/555555?text={imagen_texto}'
                 ))
 
-            # Social media links
+            # Enlaces a redes sociales
             redes = [
                 ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
                 ('X', 'https://x.com', 'fab fa-x-twitter'),
@@ -159,7 +159,7 @@ def create_app():
             for nombre, url, icono in redes:
                 db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
 
-            # Testimonial
+            # Testimonio
             db.session.add(Testimonial(
                 author="Juan Pérez",
                 content="¡Excelente sitio! Encontré el producto perfecto.",
@@ -173,16 +173,16 @@ def create_app():
             print("✅ Datos iniciales creados.")
         else:
             print("ℹ️ Los usuarios ya existen. Saltando datos iniciales.")
-    # ----------- END DATABASE INITIALIZATION -----------
+    # ----------- FIN DE LA INICIALIZACIÓN DE LA BASE DE DATOS -----------
 
     # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
     def load_user(user_id):
-        # Callback to reload the user object from the user ID stored in the session
+        # Callback para recargar el objeto de usuario desde el ID de usuario almacenado en la sesión
         return db.session.get(User, int(user_id))
 
     # ----------- BLUEPRINTS -----------
-    # Import and register blueprints for different parts of the application
+    # Importa y registra los blueprints para diferentes partes de la aplicación
     from routes.admin import bp as admin_bp
     from routes.public import bp as public_bp
     from routes.api import bp as api_bp
@@ -190,13 +190,13 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp)
 
-    # ----------- GLOBAL CONTEXT INJECTION -----------
-    # These functions inject variables into the Jinja2 template context for all requests
+    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
+    # Estas funciones inyectan variables en el contexto de la plantilla Jinja2 para todas las solicitudes
     app.context_processor(inject_social_media_links)
 
     @app.context_processor
     def inject_adsense_config():
-        # Injects Adsense configuration into the Jinja2 context
+        # Inyecta la configuración de Adsense en el contexto de Jinja2
         config = AdsenseConfig.query.first()
         if config:
             return dict(
@@ -205,7 +205,7 @@ def create_app():
                 adsense_slot_2=config.adsense_slot_2,
                 adsense_slot_3=config.adsense_slot_3,
             )
-        return dict( # Return empty strings if no config found
+        return dict( # Devuelve cadenas vacías si no se encuentra la configuración
             adsense_client_id='',
             adsense_slot_1='',
             adsense_slot_2='',
@@ -214,19 +214,19 @@ def create_app():
 
     @app.context_processor
     def inject_now():
-        # Injects the current UTC datetime into the Jinja2 context
+        # Inyecta la fecha y hora UTC actual en el contexto de Jinja2
         return {'now': datetime.now(timezone.utc)}
 
-    # ----------- CUSTOM JINJA2 FILTERS -----------
-    # Custom filters for use in Jinja2 templates
+    # ----------- FILTROS JINJA2 PERSONALIZADOS -----------
+    # Filtros personalizados para usar en las plantillas de Jinja2
     @app.template_filter('markdown')
     def markdown_filter(text):
-        # Renders Markdown text to HTML
+        # Convierte el texto de Markdown a HTML
         return markdown.markdown(text)
 
     @app.template_filter('format_currency')
     def format_currency_filter(value, currency='USD', locale='es_MX'):
-        # Formats a numeric value as currency
+        # Formatea un valor numérico como moneda
         try:
             return babel_format_currency(value, currency, locale=locale)
         except Exception:
@@ -234,12 +234,12 @@ def create_app():
 
     @app.template_filter('datetime')
     def format_datetime_filter(value, format="%Y-%m-%d %H:%M:%S"):
-        # Formats a datetime object to a string
+        # Formatea un objeto datetime a una cadena de texto
         if isinstance(value, datetime):
             return value.strftime(format)
         return value
 
-    return app # Return the Flask application instance
+    return app # Devuelve la instancia de la aplicación Flask
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 # Esta función se usa normalmente para CLI o tareas administrativas únicas, no como parte del inicio normal de la aplicación
@@ -253,9 +253,13 @@ def set_admin_password(app, new_password):
         else:
             print("⚠️ Usuario 'admin' no encontrado.")
 
-# -------------------- EJECUCIÓN PRINCIPAL (FOR LOCAL DEVELOPMENT ONLY) --------------------
-# Este bloque solo se ejecuta cuando app.py ejecuta directamente (por ejemplo, 'python app.py')
+# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# Este bloque solo se ejecuta cuando se ejecuta app.py directamente (por ejemplo, 'python app.py')
 # Gunicorn NO ejecuta este bloque.
 if __name__ == "__main__":
     app = create_app()
+    with app.app_context():
+        # ¡IMPORTANTE! No llames a db.create_all() si usas Flask-Migrate.
+        # En su lugar, usa `flask db upgrade` en la consola.
+        pass
     app.run(debug=True)

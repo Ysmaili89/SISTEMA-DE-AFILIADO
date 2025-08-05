@@ -5,7 +5,7 @@ from datetime import datetime, timezone, date
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    # Aumenta el tamaño a 255 para acomodar hashes de contraseña más largos
+    # Aumenta el tamaÃ±o a 255 para acomodar hashes de contraseÃ±a mÃ¡s largos
     password_hash = db.Column(db.String(255), nullable=False) 
     is_admin = db.Column(db.Boolean, default=False)
 
@@ -159,7 +159,7 @@ class EstadisticaAfiliado(db.Model):
     comision_generada = db.Column(db.Float, default=0.0)
     pagado = db.Column(db.Boolean, default=False)
 
-    # Relación con Afiliado
+    # RelaciÃ³n con Afiliado
     afiliado = db.relationship('Afiliado', backref='estadisticas', lazy=True)
 
     def __repr__(self):
@@ -169,10 +169,10 @@ class AdsenseConfig(db.Model):
     __tablename__ = 'adsense_config'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)
-    adsense_slot_1 = db.Column(db.String(50), nullable=True) # Hecho anulable según la cadena vacía predeterminada de app.py
+    adsense_slot_1 = db.Column(db.String(50), nullable=True) # Hecho anulable segÃºn la cadena vacÃ­a predeterminada de app.py
     adsense_slot_2 = db.Column(db.String(50), nullable=True) # Hecho anulable
     adsense_slot_3 = db.Column(db.String(50), nullable=True) # Hecho anulable
-    # Agregue un campo de estado opcional si desea habilitar / deshabilitar la configuración fácilmente
+    # Agregue un campo de estado opcional si desea habilitar / deshabilitar la configuraciÃ³n fÃ¡cilmente
     estado = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))

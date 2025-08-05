@@ -1,3 +1,4 @@
+# models.py
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime, timezone, date
@@ -5,7 +6,7 @@ from datetime import datetime, timezone, date
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    # Aumenta el tamaÃÂ±o a 255 para acomodar hashes de contraseÃÂ±a mÃÂ¡s largos
+    # Aumenta el tamaño a 255 para acomodar hashes de contraseña más largos
     password_hash = db.Column(db.String(255), nullable=False) 
     is_admin = db.Column(db.Boolean, default=False)
 
@@ -66,7 +67,8 @@ class Articulo(db.Model):
 class SyncInfo(db.Model):
     __tablename__ = 'sync_info'
     id = db.Column(db.Integer, primary_key=True)
-    last_sync_time = db.Column(db.String(50), nullable=False) # Consider using db.DateTime here
+    # Recomendado: usa db.DateTime en lugar de String
+    last_sync_time = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     last_sync_count = db.Column(db.Integer, nullable=False)
     last_synced_api_url = db.Column(db.String(255), nullable=True)
 
@@ -80,7 +82,7 @@ class SocialMediaLink(db.Model):
     url = db.Column(db.String(255), nullable=False)
     icon_class = db.Column(db.String(100), nullable=True) # e.g., 'fab fa-facebook-f'
     is_visible = db.Column(db.Boolean, default=True, nullable=False)
-    # Added order_num for sorting, as used in app.py's inject_social_media_links
+    # Agregado order_num para ordenar, como se usa en inject_social_media_links de app.py
     order_num = db.Column(db.Integer, default=0, nullable=False)
 
     def __repr__(self):
@@ -98,8 +100,9 @@ class ContactMessage(db.Model):
     is_archived = db.Column(db.Boolean, default=False)
     response_text = db.Column(db.Text, nullable=True)
     response_timestamp = db.Column(db.DateTime, nullable=True)
-    likes = db.Column(db.Integer, default=0) # Consider if these belong here or on Testimonial
-    dislikes = db.Column(db.Integer, default=0) # Consider if these belong here or on Testimonial
+    # Considera si estos campos deberían estar aquí o en el modelo Testimonial
+    likes = db.Column(db.Integer, default=0) 
+    dislikes = db.Column(db.Integer, default=0) 
 
     def __repr__(self):
         return f'<ContactMessage {self.email} - {self.subject}>'
@@ -110,7 +113,7 @@ class Testimonial(db.Model):
     author = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date_posted = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    is_visible = db.Column(db.Boolean, default=False) # Requires admin approval
+    is_visible = db.Column(db.Boolean, default=False) # Requiere aprobación del administrador
     likes = db.Column(db.Integer, default=0)
     dislikes = db.Column(db.Integer, default=0)
 
@@ -159,7 +162,7 @@ class EstadisticaAfiliado(db.Model):
     comision_generada = db.Column(db.Float, default=0.0)
     pagado = db.Column(db.Boolean, default=False)
 
-    # RelaciÃÂ³n con Afiliado
+    # Relación con Afiliado
     afiliado = db.relationship('Afiliado', backref='estadisticas', lazy=True)
 
     def __repr__(self):
@@ -169,10 +172,10 @@ class AdsenseConfig(db.Model):
     __tablename__ = 'adsense_config'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)
-    adsense_slot_1 = db.Column(db.String(50), nullable=True) # Hecho anulable segÃÂºn la cadena vacÃÂ­a predeterminada de app.py
-    adsense_slot_2 = db.Column(db.String(50), nullable=True) # Hecho anulable
-    adsense_slot_3 = db.Column(db.String(50), nullable=True) # Hecho anulable
-    # Agregue un campo de estado opcional si desea habilitar / deshabilitar la configuraciÃÂ³n fÃÂ¡cilmente
+    adsense_slot_1 = db.Column(db.String(50), nullable=True)
+    adsense_slot_2 = db.Column(db.String(50), nullable=True)
+    adsense_slot_3 = db.Column(db.String(50), nullable=True)
+    # Agregue un campo de estado opcional si desea habilitar / deshabilitar la configuración fácilmente
     estado = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))

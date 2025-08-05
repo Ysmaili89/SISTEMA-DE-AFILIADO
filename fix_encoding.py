@@ -7,11 +7,17 @@ import os
 def convert_to_utf8(filename):
     """
     Lee un archivo con una codificación supuesta (latin-1) y lo reescribe como UTF-8.
-    Crea una copia de seguridad del archivo original antes de la conversión.
+    Crea una copia de seguridad del archivo original antes de la conversión, eliminando la antigua si existe.
     """
     try:
-        # Crea una copia de seguridad del archivo original
         backup_filename = f"{filename}.bak"
+        
+        # Elimina el archivo de copia de seguridad antiguo si ya existe
+        if os.path.exists(backup_filename):
+            os.remove(backup_filename)
+            print(f"Archivo de copia de seguridad anterior '{backup_filename}' eliminado.")
+
+        # Crea una copia de seguridad del archivo original
         os.rename(filename, backup_filename)
         print(f"Copia de seguridad del archivo original creada en '{backup_filename}'")
 
@@ -39,4 +45,3 @@ if __name__ == "__main__":
     # El primer argumento de la línea de comandos es el nombre del archivo a convertir
     target_file = sys.argv[1]
     convert_to_utf8(target_file)
-    

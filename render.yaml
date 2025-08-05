@@ -1,13 +1,13 @@
-services:
-  - type: web
-    name: afiliados-app
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn --bind 0.0.0.0:$PORT app:create_app()"
-    envVars:
-      - key: SECRET_KEY
-        value: clave123segura
-      - key: DATABASE_URL
-        fromDatabase:
-          name: afiliados-db
-          property: connectionString
+servicios:
+ - Tipo: WEB
+   name: afiliados-app
+   Entorno: Python
+   buildCommand: "pip install -r requirements.txt"
+   startCommand: "gunicorn --bind 0.0.0.0:$PORT 'app:create_app()'"
+   envVars:
+   - Clave: SECRET_KEY
+     Valor: Clave123Segura
+   - Clave: DATABASE_URL
+     fromDatabase:
+       name: afiliados-db
+       propiedad: connectionString

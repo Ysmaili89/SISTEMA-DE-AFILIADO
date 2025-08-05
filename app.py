@@ -1,10 +1,10 @@
 # C:\Users\joran\OneDrive\data\Documentos\LMSGI\afiliados_app\app.py
 
-# Standard library imports
+# Importaciones de bibliotecas estándar
 import os
 from datetime import datetime, timezone
 
-# Third-party imports
+# Importaciones de terceros
 from flask import Flask
 from flask_babel import Babel
 from flask_migrate import Migrate
@@ -22,7 +22,7 @@ from models import (
 )
 from utils import slugify # Assuming utils.py exists and contains slugify
 
-# For currency formatting
+# Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
 
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
@@ -242,7 +242,7 @@ def create_app():
     return app # Return the Flask application instance
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
-# This function is typically used for CLI or one-off admin tasks, not part of regular app startup
+# Esta función se usa normalmente para CLI o tareas administrativas únicas, no como parte del inicio normal de la aplicación
 def set_admin_password(app, new_password):
     with app.app_context():
         admin_user = User.query.filter_by(username='admin').first()
@@ -254,9 +254,8 @@ def set_admin_password(app, new_password):
             print("⚠️ Usuario 'admin' no encontrado.")
 
 # -------------------- EJECUCIÓN PRINCIPAL (FOR LOCAL DEVELOPMENT ONLY) --------------------
-# This block only runs when you execute app.py directly (e.g., `python app.py`)
-# Gunicorn does NOT execute this block.
+# Este bloque solo se ejecuta cuando app.py ejecuta directamente (por ejemplo, 'python app.py')
+# Gunicorn NO ejecuta este bloque.
 if __name__ == "__main__":
     app = create_app()
-    # create_initial_data(app) # This call is now redundant here as it's inside create_app()
     app.run(debug=True)

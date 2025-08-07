@@ -4,14 +4,15 @@ from flask_login import UserMixin
 from datetime import datetime, timezone, date
 
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'  # nombre en plural para evitar palabra reservada
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    # Aumenta el tamaño a 255 para acomodar hashes de contraseña más largos
     password_hash = db.Column(db.String(255), nullable=False) 
     is_admin = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<User {self.username}>'
+
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'

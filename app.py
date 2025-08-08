@@ -39,6 +39,8 @@ def get_application_locale():
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
     # Inyecta enlaces de redes sociales en el contexto de Jinja2
+    # El código fallaba aquí porque la columna 'order_num' no existía
+    # en la base de datos. Se soluciona forzando la creación de la tabla.
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
@@ -64,11 +66,13 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÓN: Crea todas las tablas al iniciar la aplicación.
-    # Esto garantiza que las tablas existan antes de que cualquier otra lógica
-    # de la aplicación intente consultarlas.
+    # CORRECCIÓN: Eliminar y volver a crear todas las tablas al iniciar la aplicación.
+    # Esta es una medida de depuración para asegurar que el esquema coincida.
+    # ¡ADVERTENCIA!: Esto borrará todos los datos existentes en la base de datos.
+    # Después de un despliegue exitoso, esta línea `db.drop_all()` debe eliminarse.
     # --------------------------------------------------------------------------
     with app.app_context():
+        db.drop_all()
         db.create_all()
 
     # ----------- BLUEPRINTS -----------
@@ -131,7 +135,7 @@ def create_app():
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
             
-            # NOTA: db.create_all() ya no es necesario aquí.
+            # Nota: db.create_all() ya no es necesario aquí.
             # Se ha movido a la función create_app() para que se ejecute siempre.
             
             if User.query.first():

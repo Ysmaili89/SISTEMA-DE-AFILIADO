@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 # Local application imports
 from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
 from forms import PublicTestimonialForm
-from extensions import db # Corrected 'De extensiones Importar DB'
+from extensions import db
 
 # Load environment variables as early as possible
 load_dotenv()
@@ -20,17 +20,16 @@ load_dotenv()
 # Define the 'publico' Blueprint
 bp = Blueprint('publico', __name__)
 
-# Debug line to check API key loading
-print(f"DEBUG (public.py): OPENAI_API_KEY value loaded: {os.getenv('OPENAI_API_KEY')}")
-
 # Configure the OpenAI client
-try: # Corrected 'Intente:'
+# Este bloque inicializa el cliente de OpenAI si la clave está disponible.
+try:
     openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except Exception as e: # Corrected 'excepto la excepción como e:'
+except Exception as e:
     print(f"Error initializing OpenAI client in public.py: {e}. Ensure OPENAI_API_KEY is configured.")
     openai_client = None
 
 # --- Helper functions for chatbot tools ---
+# Estas funciones interactúan con la base de datos y preparan los datos para el chatbot.
 
 def get_all_products_for_chatbot():
     """
@@ -38,7 +37,7 @@ def get_all_products_for_chatbot():
     Returns a list of dictionaries containing product ID, name, price, description, and link.
     Handles possible database errors.
     """
-    try: # Corrected 'Intente:'
+    try:
         products = Producto.query.all()
         products_data = []
         for p in products:
@@ -50,7 +49,7 @@ def get_all_products_for_chatbot():
                 "link": p.link
             })
         return products_data
-    except Exception as e: # Corrected 'excepto la excepción como e:'
+    except Exception as e:
         print(f"Error getting products for chatbot: {e}")
         return []
 
@@ -108,7 +107,7 @@ def get_general_help_info():
     return {"help_info": f"You can find detailed guides and additional help in our Guides section: {guides_url}."}
 
 ### Context Processors
-
+# Estos decoradores inyectan variables en el contexto de todas las plantillas.
 
 @bp.context_processor
 def inject_active_advertisements():
@@ -127,21 +126,19 @@ def inject_active_advertisements():
 @bp.context_processor
 def inject_adsense_config():
     """
-    Injects the global AdSense configuration into the template context,
-    fetching the data from the database.
+    Inyecta la configuración global de AdSense en el contexto de la plantilla,
+    obteniendo los datos de la base de datos.
     """
     adsense_config_db = AdsenseConfig.query.first()
-# In routes/public.py, inside inject_adsense_config
-
-    if adsense_config_db: # Corrected 'Si' to 'if'
+    if adsense_config_db:
         return dict(
-            adsense_client_id=adsense_config_db.adsense_client_id, # Added this back
-            adsense_slot_header=adsense_config_db.adsense_slot_1, # Assuming slot_1 for header
-            adsense_slot_sidebar=adsense_config_db.adsense_slot_2, # Corrected to use existing slot_2
-            adsense_slot_content=adsense_config_db.adsense_slot_3, # Corrected to use existing slot_3
-            adsense_slot_footer='' # Or assign another existing slot, or keep it empty if not available
+            adsense_client_id=adsense_config_db.adsense_client_id,
+            adsense_slot_header=adsense_config_db.adsense_slot_1,
+            adsense_slot_sidebar=adsense_config_db.adsense_slot_2,
+            adsense_slot_content=adsense_config_db.adsense_slot_3,
+            adsense_slot_footer='' # Asigna un slot si lo tienes, o déjalo vacío
         )
-    else: # Corrected 'más' to 'else'
+    else:
         return dict(
             adsense_client_id='',
             adsense_slot_header='',
@@ -150,6 +147,8 @@ def inject_adsense_config():
             adsense_slot_footer=''
         )
 
+
+# --- Public Routes ---
 
 @bp.route('/')
 def index():
@@ -200,7 +199,7 @@ def productos_por_slug(slug):
         return render_template('productos_por_subcategoria.html',
                                subcat_name=subcat.nombre,
                                productos=products_in_subcat,
-                               page=page, # Corrected 'página=página,'
+                               page=page,
                                total_pages=total_pages)
     flash('Subcategoría no encontrada.', 'danger')
     return redirect(url_for('publico.show_categorias'))
@@ -215,6 +214,7 @@ def guias():
     total_pages = articulo_pagination.pages
     articulos = []
     for art in articulos_db:
+        # Normalizar la fecha a datetime con timezone
         fecha_dt = art.fecha
         if isinstance(art.fecha, date) and not isinstance(art.fecha, datetime):
             fecha_dt = datetime.combine(art.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
@@ -235,6 +235,7 @@ def guia_detalle(slug):
     """Renders the detail page for a specific article based on its slug."""
     articulo = Articulo.query.filter_by(slug=slug).first()
     if articulo:
+        # Normalizar la fecha a datetime con timezone antes de pasarla a la plantilla
         if isinstance(articulo.fecha, date) and not isinstance(articulo.fecha, datetime):
             articulo.fecha = datetime.combine(articulo.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
         elif isinstance(articulo.fecha, datetime) and articulo.fecha.tzinfo is None:
@@ -244,26 +245,21 @@ def guia_detalle(slug):
     return redirect(url_for('publico.guias'))
 
 
-
-
-# ... (otras importaciones y funciones) ...
-
 @bp.route('/acerca-de', methods=['GET', 'POST'])
 def acerca_de():
     testimonial_form = PublicTestimonialForm()
 
     if testimonial_form.validate_on_submit():
-        # Honeypot check for spam
+        # Honeypot check for spam, redirect silently if filled
         if testimonial_form.fax_number.data:
             print("Spam detected: honeypot field filled for testimonial submission.")
-            flash('Gracias por tu testimonio. Ha sido recibido.', 'success')
             return redirect(url_for('publico.acerca_de'))
 
         try:
             new_testimonial = Testimonial(
                 author=testimonial_form.author.data,
                 content=testimonial_form.content.data,
-                is_visible=False, # Testimonials are not visible by default, awaiting admin approval
+                is_visible=False, # Testimonios no son visibles por defecto, esperan aprobación
                 date_posted=datetime.now(timezone.utc)
             )
             db.session.add(new_testimonial)
@@ -275,11 +271,10 @@ def acerca_de():
             flash(f'Ocurrió un error al enviar tu testimonio. Por favor, inténtalo de nuevo. Detalles: {e}', 'danger')
             print(f"Error saving testimonial: {e}")
 
-    # ¡IMPORTANTE!: Cambia 'testimonios' a 'testimonials' aquí
+    # Obtener testimonios visibles para mostrar en la página
     testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
     return render_template('about.html', testimonials=testimonials, testimonial_form=testimonial_form)
 
-# ... (resto de tu public.py) ...
 @bp.route('/contacto', methods=['GET', 'POST'])
 def contacto():
     """Renders the contact page and handles form submissions."""
@@ -385,10 +380,6 @@ def search_results():
     page = request.args.get('page', 1, type=int)
     per_page = 9
 
-    # --- ADD THIS DEBUG PRINT STATEMENT ---
-    print(f"DEBUG: Search query received: '{query}'")
-    # -------------------------------------
-
     productos_found = []
     articulos_found = []
     total_pages = 1
@@ -406,22 +397,10 @@ def search_results():
         productos_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
         productos_found = productos_pagination.items
 
-        # --- ADD THESE DEBUG PRINT STATEMENTS ---
-        print(f"DEBUG: Found {len(productos_found)} products for query '{query}'")
-        for p in productos_found:
-            print(f"     - Product: {p.nombre} (ID: {p.id})")
-        # -------------------------------------
-
         total_products_pages = productos_pagination.pages
 
         articulos_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
         articulos_found = articulos_pagination.items
-
-        # --- ADD THESE DEBUG PRINT STATEMENTS ---
-        print(f"DEBUG: Found {len(articulos_found)} articles for query '{query}'")
-        for a in articulos_found:
-            print(f"     - Article: {a.titulo} (ID: {a.id})")
-        # -------------------------------------
 
         total_articles_pages = articulos_pagination.pages
 
@@ -431,30 +410,38 @@ def search_results():
                            query=query,
                            productos=productos_found,
                            articulos=articulos_found,
-                           page=page, # Corrected 'página=página,'
+                           page=page,
                            total_pages=total_pages)
 
-### Affiliate User Interface and API Routes
+### Interfaz de usuario de afiliados y rutas API
 
 @bp.route('/ref/<int:afiliado_id>')
 def register_click(afiliado_id):
+    """
+    Registra un clic para un afiliado y lo redirige a su enlace.
+    """
     afiliado = Afiliado.query.get_or_404(afiliado_id)
 
+    # Busca si ya existe una estadística para este afiliado en el día de hoy
     estadistica = EstadisticaAfiliado.query.filter_by(
         afiliado_id=afiliado.id,
         fecha=date.today()
-    ).first() # Corrected '.primero()'
+    ).first()
 
     if estadistica:
-        estadistica.clics += 1 # Assuming 'clics' is the correct attribute name in your model
-    else: # Corrected 'más:'
+        # Si existe, incrementa el contador de clics
+        estadistica.clics += 1
+    else:
+        # Si no existe, crea una nueva entrada
         estadistica = EstadisticaAfiliado(
             afiliado_id=afiliado.id,
-            clics=1, # Assuming 'clics' is the correct attribute name in your model
+            clics=1,
             fecha=date.today()
         )
         db.session.add(estadistica)
 
+    # Guarda los cambios en la base de datos
     db.session.commit()
 
-    return redirect(afiliado.enlace_referido) # Ensure 'enlace_referido' is the correct attribute name for the affiliate URL in your Afiliado model
+    # Redirige al usuario al enlace del afiliado
+    return redirect(afiliado.enlace_referido)

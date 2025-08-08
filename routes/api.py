@@ -1,13 +1,15 @@
 # C:\Users\joran\OneDrive\data\Documentos\LMSGI\afiliados_app\routes\api.py
 
-from flask import Blueprint, jsonify # Removed 'request' as it's not used in this file
-# Removed 'from app import db' as 'db' is not directly used in this file's queries
-from models import Producto, Categoria, Subcategoria, Articulo # Ensure Subcategoria is imported explicitly
-from sqlalchemy.orm import joinedload # To efficiently load related data
+from flask import Blueprint, jsonify
+from models import Producto, Categoria, Subcategoria, Articulo, Testimonial # Asegúrate de importar el modelo Testimonial
+from sqlalchemy.orm import joinedload
 
+# Se define el Blueprint para la API con el prefijo /api
 bp = Blueprint('api', __name__, url_prefix='/api')
 
-# Get all products
+# ----------- RUTAS DE PRODUCTOS -----------
+
+# Obtener todos los productos
 @bp.route('/productos', methods=['GET'])
 def api_productos():
     productos = Producto.query.all()
@@ -26,7 +28,7 @@ def api_productos():
     } for p in productos]
     return jsonify(productos_data)
 
-# Get a product by ID
+# Obtener un producto por ID
 @bp.route('/productos/<int:producto_id>', methods=['GET'])
 def api_producto_por_id(producto_id):
     producto = Producto.query.get(producto_id)
@@ -46,7 +48,9 @@ def api_producto_por_id(producto_id):
         })
     return jsonify({"mensaje": "Producto no encontrado"}), 404
 
-# Get all categories
+# ----------- RUTAS DE CATEGORÍAS -----------
+
+# Obtener todas las categorías
 @bp.route('/categorias', methods=['GET'])
 def api_categorias():
     categorias = Categoria.query.all()
@@ -57,10 +61,10 @@ def api_categorias():
     } for c in categorias]
     return jsonify(categorias_data)
 
-# Get a category by ID with its subcategories
+# Obtener una categoría por ID con sus subcategorías
 @bp.route('/categorias/<int:categoria_id>', methods=['GET'])
 def api_categoria_por_id(categoria_id):
-    # Use joinedload to prevent N+1 query problem for subcategories
+    # Usamos joinedload para prevenir el problema de N+1 consultas para las subcategorías
     categoria = Categoria.query.options(joinedload(Categoria.subcategorias)).get(categoria_id)
     if categoria:
         subcategorias_data = [{
@@ -77,7 +81,9 @@ def api_categoria_por_id(categoria_id):
         })
     return jsonify({"mensaje": "Categoría no encontrada"}), 404
 
-# Get all subcategories (New endpoint, useful for nested relationships)
+# ----------- RUTAS DE SUBCATEGORÍAS -----------
+
+# Obtener todas las subcategorías
 @bp.route('/subcategorias', methods=['GET'])
 def api_subcategorias():
     subcategorias = Subcategoria.query.all()
@@ -89,7 +95,7 @@ def api_subcategorias():
     } for sc in subcategorias]
     return jsonify(subcategorias_data)
 
-# Get a subcategory by ID with its products (New endpoint)
+# Obtener una subcategoría por ID con sus productos
 @bp.route('/subcategorias/<int:subcategoria_id>', methods=['GET'])
 def api_subcategoria_por_id(subcategoria_id):
     subcategoria = Subcategoria.query.options(joinedload(Subcategoria.productos)).get(subcategoria_id)
@@ -111,17 +117,18 @@ def api_subcategoria_por_id(subcategoria_id):
         })
     return jsonify({"mensaje": "Subcategoría no encontrada"}), 404
 
+# ----------- RUTAS DE ARTÍCULOS -----------
 
-# Get all articles
+# Obtener todos los artículos
 @bp.route('/articulos', methods=['GET'])
 def api_articulos():
     articulos = Articulo.query.all()
     articulos_data = [{
         "id": a.id,
         "titulo": a.titulo,
-        "slug": a.slug, # Corrected: Added slug field
+        "slug": a.slug,
         "contenido": a.contenido,
-        "autor": a.autor, # Corrected: 'Autor' to 'autor'
+        "autor": a.autor,
         "fecha": a.fecha.isoformat() if a.fecha else None,
         "imagen": a.imagen
     } for a in articulos]
@@ -142,3 +149,51 @@ def api_articulo_por_id(articulo_id):
             "imagen": articulo.imagen
         })
     return jsonify({"mensaje": "Artículo no encontrado"}), 404
+    
+# Nuevo: Obtener un artículo por su slug
+@bp.route('/articulos/slug/<string:articulo_slug>', methods=['GET'])
+def api_articulo_por_slug(articulo_slug):
+    articulo = Articulo.query.filter_by(slug=articulo_slug).first()
+    if articulo:
+        return jsonify({
+            "id": articulo.id,
+            "titulo": articulo.titulo,
+            "slug": articulo.slug,
+            "contenido": articulo.contenido,
+            "autor": articulo.autor,
+            "fecha": articulo.fecha.isoformat() if articulo.fecha else None,
+            "imagen": articulo.imagen
+        })
+    return jsonify({"mensaje": "Artículo no encontrado"}), 404
+
+# ----------- RUTAS DE TESTIMONIOS -----------
+
+# Nuevo: Obtener todos los testimonios
+@bp.route('/testimonios', methods=['GET'])
+def api_testimonios():
+    # Obtener solo los testimonios visibles, ordenados por fecha
+    testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
+    testimonios_data = [{
+        "id": t.id,
+        "author": t.author,
+        "content": t.content,
+        "date_posted": t.date_posted.isoformat() if t.date_posted else None,
+        "likes": t.likes,
+        "dislikes": t.dislikes
+    } for t in testimonios]
+    return jsonify(testimonios_data)
+
+# Nuevo: Obtener un testimonio por ID
+@bp.route('/testimonios/<int:testimonio_id>', methods=['GET'])
+def api_testimonio_por_id(testimonio_id):
+    testimonio = Testimonial.query.get(testimonio_id)
+    if testimonio and testimonio.is_visible:
+        return jsonify({
+            "id": testimonio.id,
+            "author": testimonio.author,
+            "content": testimonio.content,
+            "date_posted": testimonio.date_posted.isoformat() if testimonio.date_posted else None,
+            "likes": testimonio.likes,
+            "dislikes": testimonio.dislikes
+        })
+    return jsonify({"mensaje": "Testimonio no encontrado o no visible"}), 404

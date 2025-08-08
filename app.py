@@ -58,7 +58,7 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app) # noqa: F841
+    csrf = CSRFProtect(app)  # noqa: F841
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
@@ -117,12 +117,13 @@ def create_app():
         return value
 
     # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
-    @click.command('seed-db') # Forma correcta de registrar un comando CLI
+    @click.command('seed-db')  # Forma correcta de registrar un comando CLI
     def seed_initial_data():
         """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
 
+            # Verificar si ya existe un usuario. Si es así, no hacer nada para evitar duplicados.
             if User.query.first():
                 print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
                 return

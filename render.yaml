@@ -2,8 +2,10 @@ servicios:
   - Tipo: WEB
     name: afiliados-app
     Entorno: Python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "flask db upgrade && flask seed-db && gunicorn --bind 0.0.0.0:$PORT --timeout 120 app:create_app"
+    # RECOMENDADO: Mueve el comando de 'seed' al buildCommand también.
+    # Esto asegura que los datos iniciales se carguen una sola vez durante el despliegue.
+    buildCommand: "pip install -r requirements.txt && flask db upgrade && flask seed-db"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT --timeout 120 app:create_app"
     envVars:
     - Clave: SECRET_KEY
       Valor: Clave123Segura

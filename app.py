@@ -1,4 +1,5 @@
 # app.py
+# app.py
 
 # Importaciones de bibliotecas estándar
 import os
@@ -58,7 +59,7 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app)  # noqa: F841
+    csrf = CSRFProtect(app) 
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
@@ -117,11 +118,14 @@ def create_app():
         return value
 
     # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
-    @click.command('seed-db')  # Forma correcta de registrar un comando CLI
+    @app.cli.command('seed-db')
     def seed_initial_data():
         """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
+            
+            # --- CORRECCIÓN: Agregar esta línea para crear las tablas si no existen ---
+            db.create_all()
 
             # Verificar si ya existe un usuario. Si es así, no hacer nada para evitar duplicados.
             if User.query.first():
@@ -219,14 +223,17 @@ def create_app():
     # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
     def load_user(user_id):
+        # --- CORRECCIÓN: El modelo es `User`, no `Usuario` ---
         return db.session.get(User, int(user_id))
 
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
+    # --- CORRECCIÓN: `return app` debe estar al final ---
     return app
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
     with app.app_context():
+        # --- CORRECCIÓN: Los nombres de los atributos y métodos están en inglés ---
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
             admin_user.password_hash = generate_password_hash(new_password)
@@ -236,6 +243,7 @@ def set_admin_password(app, new_password):
             print("Usuario 'admin' no encontrado.")
 
 # -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# --- CORRECCIÓN: `if __name__ == "__main__":` es la sintaxis correcta ---
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():

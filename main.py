@@ -1,9 +1,6 @@
-
-# Importa la función de fábrica de aplicaciones
+# main.py
 from app import create_app
 
-# Crea la instancia de la aplicación
+# Gunicorn busca un objeto llamado 'app' en este módulo.
+# Por eso, creamos la instancia aquí.
 app = create_app()
-
-# Nota: Este archivo es el punto de entrada principal para servidores como Gunicorn.
-# La variable 'app' debe ser expuesta a nivel global para que el servidor pueda encontrarla.

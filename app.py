@@ -1,5 +1,4 @@
 # app.py
-# app.py
 
 # Importaciones de bibliotecas estándar
 import os
@@ -124,7 +123,9 @@ def create_app():
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
             
-            # --- CORRECCIÓN: Agregar esta línea para crear las tablas si no existen ---
+            # ----------------------------------------------------
+            # CORRECCIÓN: Crea todas las tablas antes de cualquier consulta.
+            # ----------------------------------------------------
             db.create_all()
 
             # Verificar si ya existe un usuario. Si es así, no hacer nada para evitar duplicados.
@@ -223,17 +224,14 @@ def create_app():
     # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
     def load_user(user_id):
-        # --- CORRECCIÓN: El modelo es `User`, no `Usuario` ---
         return db.session.get(User, int(user_id))
 
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
-    # --- CORRECCIÓN: `return app` debe estar al final ---
     return app
 
 # -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
     with app.app_context():
-        # --- CORRECCIÓN: Los nombres de los atributos y métodos están en inglés ---
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
             admin_user.password_hash = generate_password_hash(new_password)
@@ -243,7 +241,6 @@ def set_admin_password(app, new_password):
             print("Usuario 'admin' no encontrado.")
 
 # -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
-# --- CORRECCIÓN: `if __name__ == "__main__":` es la sintaxis correcta ---
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():

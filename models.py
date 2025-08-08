@@ -1,7 +1,7 @@
-# models.py
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime, timezone, date
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'  # nombre en plural para evitar palabra reservada
@@ -10,9 +10,16 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False) 
     is_admin = db.Column(db.Boolean, default=False)
 
+    def set_password(self, password):
+        """Genera un hash seguro para la contraseña"""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """Verifica si la contraseña es correcta"""
+        return check_password_hash(self.password_hash, password)
+
     def __repr__(self):
         return f'<User {self.username}>'
-
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'
@@ -45,7 +52,7 @@ class Producto(db.Model):
     imagen = db.Column(db.String(255), nullable=True)
     link = db.Column(db.String(255), nullable=False)
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategoria.id'), nullable=True)
-    external_id = db.Column(db.String(100), unique=True, nullable=True) # ID from external API
+    external_id = db.Column(db.String(100), unique=True, nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
@@ -68,7 +75,6 @@ class Articulo(db.Model):
 class SyncInfo(db.Model):
     __tablename__ = 'sync_info'
     id = db.Column(db.Integer, primary_key=True)
-    # Recomendado: usa db.DateTime en lugar de String
     last_sync_time = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     last_sync_count = db.Column(db.Integer, nullable=False)
     last_synced_api_url = db.Column(db.String(255), nullable=True)
@@ -81,9 +87,8 @@ class SocialMediaLink(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     platform = db.Column(db.String(50), unique=True, nullable=False)
     url = db.Column(db.String(255), nullable=False)
-    icon_class = db.Column(db.String(100), nullable=True) # e.g., 'fab fa-facebook-f'
+    icon_class = db.Column(db.String(100), nullable=True)
     is_visible = db.Column(db.Boolean, default=True, nullable=False)
-    # Agregado order_num para ordenar, como se usa en inject_social_media_links de app.py
     order_num = db.Column(db.Integer, default=0, nullable=False)
 
     def __repr__(self):
@@ -101,7 +106,6 @@ class ContactMessage(db.Model):
     is_archived = db.Column(db.Boolean, default=False)
     response_text = db.Column(db.Text, nullable=True)
     response_timestamp = db.Column(db.DateTime, nullable=True)
-    # Considera si estos campos deberían estar aquí o en el modelo Testimonial
     likes = db.Column(db.Integer, default=0) 
     dislikes = db.Column(db.Integer, default=0) 
 
@@ -114,7 +118,7 @@ class Testimonial(db.Model):
     author = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date_posted = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    is_visible = db.Column(db.Boolean, default=False) # Requiere aprobación del administrador
+    is_visible = db.Column(db.Boolean, default=False)
     likes = db.Column(db.Integer, default=0)
     dislikes = db.Column(db.Integer, default=0)
 
@@ -124,7 +128,7 @@ class Testimonial(db.Model):
 class Advertisement(db.Model):
     __tablename__ = 'advertisement'
     id = db.Column(db.Integer, primary_key=True)
-    type = db.Column(db.String(50), nullable=False)  # e.g., 'destacado', 'recomendado', etc.
+    type = db.Column(db.String(50), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     text_content = db.Column(db.Text, nullable=True)
@@ -156,14 +160,13 @@ class EstadisticaAfiliado(db.Model):
     __tablename__ = 'estadisticas_afiliados'
     id = db.Column(db.Integer, primary_key=True)
     afiliado_id = db.Column(db.Integer, db.ForeignKey('afiliados.id'), nullable=False)
-    fecha = db.Column(db.Date, default=date.today) # Using date.today for Date type
+    fecha = db.Column(db.Date, default=date.today)
     clics = db.Column(db.Integer, default=0)
     registros = db.Column(db.Integer, default=0)
     ventas = db.Column(db.Integer, default=0)
     comision_generada = db.Column(db.Float, default=0.0)
     pagado = db.Column(db.Boolean, default=False)
 
-    # Relación con Afiliado
     afiliado = db.relationship('Afiliado', backref='estadisticas', lazy=True)
 
     def __repr__(self):
@@ -176,7 +179,6 @@ class AdsenseConfig(db.Model):
     adsense_slot_1 = db.Column(db.String(50), nullable=True)
     adsense_slot_2 = db.Column(db.String(50), nullable=True)
     adsense_slot_3 = db.Column(db.String(50), nullable=True)
-    # Agregue un campo de estado opcional si desea habilitar / deshabilitar la configuración fácilmente
     estado = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))

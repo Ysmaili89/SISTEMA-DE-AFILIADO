@@ -66,14 +66,19 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÓN: Eliminar y volver a crear todas las tablas al iniciar la aplicación.
-    # Esta es una medida de depuración para asegurar que el esquema coincida.
-    # ¡ADVERTENCIA!: Esto borrará todos los datos existentes en la base de datos.
-    # Después de un despliegue exitoso, esta línea `db.drop_all()` debe eliminarse.
+    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
+    # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
+    # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        db.drop_all()
-        db.create_all()
+        # db.drop_all()  # ADVERTENCIA: Esta línea borra todos los datos.
+        db.create_all() # ADVERTENCIA: Esta línea crea tablas, pero es mejor usar migraciones.
+    
+    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
+    # Comandos:
+    # 1. flask db init (solo la primera vez)
+    # 2. flask db migrate -m "Mensaje de la migración"
+    # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp
@@ -134,9 +139,6 @@ def create_app():
         """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
-            
-            # Nota: db.create_all() ya no es necesario aquí.
-            # Se ha movido a la función create_app() para que se ejecute siempre.
             
             if User.query.first():
                 print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")

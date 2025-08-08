@@ -1,6 +1,6 @@
 # app.py
 
-# Importaciones de bibliotecas estándar
+# Importaciones de bibliotecas estÃ¡ndar
 import os
 import click
 from datetime import datetime, timezone, date
@@ -31,24 +31,24 @@ from babel.numbers import format_currency as babel_format_currency
 # Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
 
-# -------------------- CONFIGURACIÓN DE FLASK-BABEL --------------------
+# -------------------- CONFIGURACIÃN DE FLASK-BABEL --------------------
 def get_application_locale():
-    # Esta función determina el 'locale' para Flask-Babel
+    # Esta funciÃ³n determina el 'locale' para Flask-Babel
     return 'es'
 
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
     # Inyecta enlaces de redes sociales en el contexto de Jinja2
-    # El código fallaba aquí porque la columna 'order_num' no existía
-    # en la base de datos. Se soluciona forzando la creación de la tabla.
+    # El cÃ³digo fallaba aquÃ­ porque la columna 'order_num' no existÃ­a
+    # en la base de datos. Se soluciona forzando la creaciÃ³n de la tabla.
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
-# -------------------- FÁBRICA DE APLICACIONES PRINCIPALES --------------------
+# -------------------- FÃBRICA DE APLICACIONES PRINCIPALES --------------------
 def create_app():
     app = Flask(__name__)
 
-    # ----------- CONFIGURACIONES BÁSICAS -----------
+    # ----------- CONFIGURACIONES BÃSICAS -----------
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key_for_dev_only')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -66,18 +66,18 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
+    # CORRECCIÃN: Se ha eliminado el bloque de cÃ³digo que borraba y recreaba
     # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
     # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        # db.drop_all()  # ADVERTENCIA: Esta línea borra todos los datos.
-        db.create_all() # ADVERTENCIA: Esta línea crea tablas, pero es mejor usar migraciones.
+        # db.drop_all()  # ADVERTENCIA: Esta lÃ­nea borra todos los datos.
+        db.create_all() # ADVERTENCIA: Esta lÃ­nea crea tablas, pero es mejor usar migraciones.
     
-    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
+    # DespuÃ©s de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
     # Comandos:
     # 1. flask db init (solo la primera vez)
-    # 2. flask db migrate -m "Mensaje de la migración"
+    # 2. flask db migrate -m "Mensaje de la migraciÃ³n"
     # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
@@ -88,7 +88,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp)
 
-    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
+    # ----------- INYECCIÃN DE CONTEXTO GLOBAL -----------
     app.context_processor(inject_social_media_links)
 
     @app.context_processor
@@ -136,12 +136,12 @@ def create_app():
     # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
-        """Crea datos iniciales para la aplicación si no existen."""
+        """Crea datos iniciales para la aplicaciÃ³n si no existen."""
         with app.app_context():
-            print("⚙️ Creando datos iniciales...")
+            print("âï¸ Creando datos iniciales...")
             
             if User.query.first():
-                print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
+                print("â¹ï¸ Los usuarios ya existen. Saltando la creaciÃ³n de datos iniciales.")
                 return
 
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
@@ -164,8 +164,8 @@ def create_app():
                 ))
 
             categorias = {
-                'Tecnología': ['Smartphones', 'Laptops'],
-                'Hogar': ['Cocina', 'Jardín'],
+                'TecnologÃ­a': ['Smartphones', 'Laptops'],
+                'Hogar': ['Cocina', 'JardÃ­n'],
                 'Deportes': ['Fitness']
             }
             for cat, subs in categorias.items():
@@ -176,9 +176,9 @@ def create_app():
                     db.session.add(Subcategoria(nombre=sub, slug=slugify(sub), categoria=categoria))
 
             productos = [
-                ('Smartphone Pro X', 899.99, 'Smartphone con cámara de alta resolución y batería duradera.', 'Smartphones'),
+                ('Smartphone Pro X', 899.99, 'Smartphone con cÃ¡mara de alta resoluciÃ³n y baterÃ­a duradera.', 'Smartphones'),
                 ('Laptop UltraBook', 1200.00, 'Laptop ligera y potente.', 'Laptops'),
-                ('Batidora Multifuncional', 75.50, 'Batidora de cocina versátil.', 'Cocina'),
+                ('Batidora Multifuncional', 75.50, 'Batidora de cocina versÃ¡til.', 'Cocina'),
                 ('Mancuernas Ajustables', 150.00, 'Set de mancuernas para entrenar en casa.', 'Fitness'),
             ]
             for nombre, precio, desc, subcat_nombre in productos:
@@ -195,7 +195,7 @@ def create_app():
                     ))
 
             articulos = [
-                ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
+                ('GuÃ­a para elegir tu primer smartphone', 'Contenido guÃ­a smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
             ]
             for titulo, contenido, autor, imagen_texto in articulos:
@@ -219,8 +219,8 @@ def create_app():
                 db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
 
             db.session.add(Testimonial(
-                author="Juan Pérez",
-                content="¡Excelente sitio! Encontré el producto perfecto.",
+                author="Juan PÃ©rez",
+                content="Â¡Excelente sitio! EncontrÃ© el producto perfecto.",
                 date_posted=datetime.now(timezone.utc),
                 is_visible=True,
                 likes=5,
@@ -228,30 +228,30 @@ def create_app():
             ))
 
             db.session.commit()
-            print("✅ Datos iniciales creados.")
+            print("â Datos iniciales creados.")
 
     app.cli.add_command(seed_initial_data)
 
-    # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
+    # ----------- ADMINISTRADOR DE INICIO DE SESIÃN -----------
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
 
-    # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
+    # ----------- FIN DE LA FÃBRICA DE APLICACIONES -----------
     return app
 
-# -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
+# -------------------- ESTABLECER CONTRASEÃA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
     with app.app_context():
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
             admin_user.password_hash = generate_password_hash(new_password)
             db.session.commit()
-            print("Contraseña actualizada para 'admin'.")
+            print("ContraseÃ±a actualizada para 'admin'.")
         else:
             print("Usuario 'admin' no encontrado.")
 
-# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# -------------------- EJECUCIÃN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():

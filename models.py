@@ -4,7 +4,7 @@ from datetime import datetime, timezone, date
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
-# --- Modelos de la aplicación ---
+# --- Modelos de la aplicaciÃ³n ---
 class User(UserMixin, db.Model):
     """Modelo para representar a los usuarios."""
     __tablename__ = 'users'  # nombre en plural para evitar palabra reservada
@@ -14,11 +14,11 @@ class User(UserMixin, db.Model):
     is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
-        """Genera un hash seguro para la contraseña."""
+        """Genera un hash seguro para la contraseÃ±a."""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Verifica si la contraseña es correcta."""
+        """Verifica si la contraseÃ±a es correcta."""
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
@@ -26,7 +26,7 @@ class User(UserMixin, db.Model):
 
 
 class Categoria(db.Model):
-    """Modelo para las categorías de productos."""
+    """Modelo para las categorÃ­as de productos."""
     __tablename__ = 'categoria'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
@@ -38,7 +38,7 @@ class Categoria(db.Model):
 
 
 class Subcategoria(db.Model):
-    """Modelo para las subcategorías de productos."""
+    """Modelo para las subcategorÃ­as de productos."""
     __tablename__ = 'subcategoria'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
@@ -70,7 +70,7 @@ class Producto(db.Model):
 
 
 class Articulo(db.Model):
-    """Modelo para los artículos del blog."""
+    """Modelo para los artÃ­culos del blog."""
     __tablename__ = 'articulo'
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(200), nullable=False)
@@ -85,7 +85,7 @@ class Articulo(db.Model):
 
 
 class SyncInfo(db.Model):
-    """Modelo para guardar la información de la última sincronización."""
+    """Modelo para guardar la informaciÃ³n de la Ãºltima sincronizaciÃ³n."""
     __tablename__ = 'sync_info'
     id = db.Column(db.Integer, primary_key=True)
     last_sync_time = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
@@ -181,7 +181,7 @@ class Afiliado(db.Model):
 
 
 class EstadisticaAfiliado(db.Model):
-    """Modelo para las estadísticas de los afiliados."""
+    """Modelo para las estadÃ­sticas de los afiliados."""
     __tablename__ = 'estadisticas_afiliados'
     id = db.Column(db.Integer, primary_key=True)
     afiliado_id = db.Column(db.Integer, db.ForeignKey('afiliados.id'), nullable=False)
@@ -199,7 +199,7 @@ class EstadisticaAfiliado(db.Model):
 
 
 class AdsenseConfig(db.Model):
-    """Modelo para la configuración de AdSense."""
+    """Modelo para la configuraciÃ³n de AdSense."""
     __tablename__ = 'adsense_config'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)

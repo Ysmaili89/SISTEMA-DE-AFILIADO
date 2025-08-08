@@ -1,1 +1,1 @@
-web: flask db upgrade && gunicorn --bind 0.0.0.0:$PORT app:create_app
+web: flask db upgrade && flask seed-db && gunicorn --bind 0.0.0.0:$PORT --timeout 120 app:create_app

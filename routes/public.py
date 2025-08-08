@@ -1,31 +1,34 @@
-# Standard library imports
+# Importaciones de bibliotecas estándar
 import os
 from datetime import datetime, date, timezone
 
-# Third-party imports
-import openai
+# Importaciones de terceros
+from openai import OpenAI
 from dotenv import load_dotenv
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
-# Local application imports
+# Importaciones de aplicaciones locales
 from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
 from forms import PublicTestimonialForm
 from extensions import db
 
-# Load environment variables as early as possible
+# Cargar variables de entorno lo antes posible
 load_dotenv()
 
-# Define the 'publico' Blueprint
+# Definir el plan 'publico'
 bp = Blueprint('publico', __name__)
 
-# Configure the OpenAI client
+# Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
-    openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    # La versión más reciente de la biblioteca de OpenAI no acepta el argumento 'proxies'.
+    # Si necesitas usar proxies, configúralos a través de variables de entorno del sistema operativo.
+    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 except Exception as e:
-    print(f"Error initializing OpenAI client in public.py: {e}. Ensure OPENAI_API_KEY is configured.")
+    # Capturar el error para depuración
+    print(f"Error al inicializar el cliente OpenAI en public.py: {e}. Asegúrese de que OPENAI_API_KEY esté configurado.")
     openai_client = None
 
 # --- Helper functions for chatbot tools ---

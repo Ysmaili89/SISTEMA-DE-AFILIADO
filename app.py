@@ -63,6 +63,14 @@ def create_app():
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
+    # --------------------------------------------------------------------------
+    # CORRECCIÓN: Crea todas las tablas al iniciar la aplicación.
+    # Esto garantiza que las tablas existan antes de que cualquier otra lógica
+    # de la aplicación intente consultarlas.
+    # --------------------------------------------------------------------------
+    with app.app_context():
+        db.create_all()
+
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp
     from routes.public import bp as public_bp
@@ -123,12 +131,9 @@ def create_app():
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
             
-            # ----------------------------------------------------
-            # CORRECCIÓN: Crea todas las tablas antes de cualquier consulta.
-            # ----------------------------------------------------
-            db.create_all()
-
-            # Verificar si ya existe un usuario. Si es así, no hacer nada para evitar duplicados.
+            # NOTA: db.create_all() ya no es necesario aquí.
+            # Se ha movido a la función create_app() para que se ejecute siempre.
+            
             if User.query.first():
                 print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
                 return

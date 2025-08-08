@@ -21,13 +21,12 @@ def validate_image_path(form, field):
         field.data.startswith(('http://', 'https://', '/', 'static/'))
     ):
         raise ValidationError('La URL de la imagen debe comenzar con http://, https://, / o ser una ruta vÃ¡lida (ej. /static/img/ o static/uploads/...).')
-
-
 # --- Formularios de la aplicaciÃ³n ---
 class LoginForm(FlaskForm):
     """Formulario para el inicio de sesiÃ³n del usuario."""
     username = StringField('Usuario', validators=[DataRequired()])
-    password = PasswordField('ContraseÃ±a', validators=[DataRequired()])
+    # CAmbio aquí: 'contraseña' se cambia a 'password'
+    password = PasswordField('ContraseÃ±a', validators=[DataRequired()]) 
     submit = SubmitField('Iniciar SesiÃ³n')
 
 
@@ -39,17 +38,16 @@ class ProductForm(FlaskForm):
     imagen = StringField('URL de la Imagen', validators=[Optional(), validate_image_path])
     link = StringField('Enlace de Afiliado', validators=[DataRequired(), URL(message='Por favor, introduce una URL vÃ¡lida.')])
     subcategoria = QuerySelectField(
-        'SubcategorÃ­a',
+        'Subcategoría',
         query_factory=lambda: Subcategoria.query.order_by(Subcategoria.nombre).all(),
         get_pk=lambda a: a.id,
         get_label=lambda a: a.nombre,
         allow_blank=True,
-        blank_text='-- Selecciona una SubcategorÃ­a --',
+        blank_text='-- Selecciona una Subcategoría --',
         validators=[Optional()]
     )
     external_id = StringField('ID Externo (Opcional)', validators=[Optional(), Length(max=255)])
     submit = SubmitField('Guardar Producto')
-
 
 class CategoryForm(FlaskForm):
     """Formulario para la creaciÃ³n y ediciÃ³n de categorÃ­as."""

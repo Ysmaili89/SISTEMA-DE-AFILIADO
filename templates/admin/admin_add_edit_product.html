@@ -37,18 +37,17 @@
                         </div>
                     {% endif %}
                 </div>
-
-                <div class="mb-3">
-                    {{ form.descripcion.label(class="form-label") }}
-                    {{ form.descripcion(class="form-control " ~ ('is-invalid' if form.descripcion.errors else ''), rows="4") }}
-                    {% if form.descripcion.errors %}
-                        <div class="invalid-feedback">
-                            {% for error in form.descripcion.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
+<div class="mb-3">
+    {{ form.descripcion.label(class="form-label") }}
+    {{ form.descripcion(class="form-control " ~ ('is-invalid' if form.descripcion.errors else ''), rows="4") }}
+    {% if form.descripcion.errors %}
+        <div class="comentarios no válidos">
+        {% por error en form.descripcion.errors %}
+            {{ error }}
+        {% endfor %}
+        </div>
+    {% endif %}
+</div>
 
                 <div class="mb-3">
                     {{ form.imagen.label(class="form-label") }}

@@ -6,7 +6,7 @@
 
 {% block content %}
     <h1 class="mb-4 text-primary fw-bold">
-        {{ 'Edit Product' if product else 'Add New Product' }}
+        {{ 'Edit product' if product else 'Add new product' }}
     </h1>
 
     <div class="card shadow-sm">
@@ -100,7 +100,7 @@
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
-                        {{ 'Update Product' if product else 'Add Product' }}
+                        {{ 'Update product' if product else 'Add product' }}
                     </button>
                     <a href="{{ url_for('admin.admin_products') }}" class="btn btn-secondary">Cancelar</a>
                 </div>

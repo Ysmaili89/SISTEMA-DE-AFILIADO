@@ -13,7 +13,7 @@ from flask_moment import Moment
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
-import markdown # Import markdown for the template filter
+import markdown
 
 # Importaciones de aplicaciones locales
 from extensions import db, login_manager
@@ -22,7 +22,6 @@ from models import (
     Producto, Articulo, Testimonial, Afiliado, AdsenseConfig,
     EstadisticaAfiliado
 )
-# Asumiendo que utils.py existe y contiene slugify
 from utils import slugify
 
 # Para formato de moneda
@@ -48,28 +47,23 @@ def create_app():
     app = Flask(__name__)
 
     # ----------- CONFIGURACIONES BÁSICAS -----------
-    # SECRET_KEY es esencial para la seguridad de la sesión.
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key_for_dev_only')
-    # DATABASE_URL debe establecerse como una variable de entorno en Render.
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['BABEL_DEFAULT_LOCALE'] = 'es'
 
     # ----------- EXTENSIONES -----------
-    # Inicializa las extensiones de Flask con la aplicación
     db.init_app(app)
     login_manager.init_app(app)
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app) # noqa: F841 # Inicializa la protección CSRF
+    csrf = CSRFProtect(app) # noqa: F841
 
-    # Configura Flask-Login
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
     # ----------- BLUEPRINTS -----------
-    # Importa y registra los blueprints para diferentes partes de la aplicación
     from routes.admin import bp as admin_bp
     from routes.public import bp as public_bp
     from routes.api import bp as api_bp
@@ -78,13 +72,10 @@ def create_app():
     app.register_blueprint(api_bp)
 
     # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
-    # Estas funciones inyectan variables en el contexto de la plantilla Jinja2 para todas las solicitudes
     app.context_processor(inject_social_media_links)
 
     @app.context_processor
     def inject_adsense_config():
-        # Inyecta la configuración de Adsense en el contexto de Jinja2
-        # Realiza esta consulta solo si la base de datos ya está inicializada.
         try:
             config = AdsenseConfig.query.first()
             if config:
@@ -95,9 +86,8 @@ def create_app():
                     adsense_slot_3=config.adsense_slot_3,
                 )
         except Exception:
-            # En el caso de un error (por ejemplo, la tabla no existe), devuelve un diccionario vacío.
             pass
-        return dict( # Devuelve cadenas vacías si no se encuentra la configuración
+        return dict(
             adsense_client_id='',
             adsense_slot_1='',
             adsense_slot_2='',
@@ -106,19 +96,15 @@ def create_app():
 
     @app.context_processor
     def inject_now():
-        # Inyecta la fecha y hora UTC actual en el contexto de Jinja2
         return {'now': datetime.now(timezone.utc)}
 
     # ----------- FILTROS JINJA2 PERSONALIZADOS -----------
-    # Filtros personalizados para usar en las plantillas de Jinja2
     @app.template_filter('markdown')
     def markdown_filter(text):
-        # Convierte el texto de Markdown a HTML
         return markdown.markdown(text)
 
     @app.template_filter('format_currency')
     def format_currency_filter(value, currency='USD', locale='es_MX'):
-        # Formatea un valor numérico como moneda
         try:
             return babel_format_currency(value, currency, locale=locale)
         except Exception:
@@ -126,13 +112,12 @@ def create_app():
 
     @app.template_filter('datetime')
     def format_datetime_filter(value, format="%Y-%m-%d %H:%M:%S"):
-        # Formatea un objeto datetime a una cadena de texto
         if isinstance(value, datetime):
             return value.strftime(format)
         return value
 
     # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
-    # Función para sembrar la base de datos
+    @click.command('seed-db') # Forma correcta de registrar un comando CLI
     def seed_initial_data():
         """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
@@ -142,11 +127,9 @@ def create_app():
                 print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
                 return
 
-            # Usuario admin
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
 
-            # Afiliado de demostración
             if not Afiliado.query.filter_by(email='afiliado@example.com').first():
                 db.session.add(Afiliado(
                     nombre='Afiliado de Prueba',
@@ -155,7 +138,6 @@ def create_app():
                     activo=True
                 ))
 
-            # Configuración inicial de Adsense
             if not AdsenseConfig.query.first():
                 db.session.add(AdsenseConfig(
                     adsense_client_id='ca-pub-1234567890123456',
@@ -164,7 +146,6 @@ def create_app():
                     adsense_slot_3='3333333333'
                 ))
 
-            # Categorías y subcategorías
             categorias = {
                 'Tecnología': ['Smartphones', 'Laptops'],
                 'Hogar': ['Cocina', 'Jardín'],
@@ -177,7 +158,6 @@ def create_app():
                 for sub in subs:
                     db.session.add(Subcategoria(nombre=sub, slug=slugify(sub), categoria=categoria))
 
-            # Productos
             productos = [
                 ('Smartphone Pro X', 899.99, 'Smartphone con cámara de alta resolución y batería duradera.', 'Smartphones'),
                 ('Laptop UltraBook', 1200.00, 'Laptop ligera y potente.', 'Laptops'),
@@ -197,7 +177,6 @@ def create_app():
                         subcategoria_id=subcat.id
                     ))
 
-            # Artículos
             articulos = [
                 ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
@@ -212,7 +191,6 @@ def create_app():
                     imagen=f'https://placehold.co/800x400/e0e0e0/555555?text={imagen_texto}'
                 ))
 
-            # Enlaces a redes sociales
             redes = [
                 ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
                 ('X', 'https://x.com', 'fab fa-x-twitter'),
@@ -223,7 +201,6 @@ def create_app():
             for nombre, url, icono in redes:
                 db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
 
-            # Testimonio
             db.session.add(Testimonial(
                 author="Juan Pérez",
                 content="¡Excelente sitio! Encontré el producto perfecto.",
@@ -236,9 +213,7 @@ def create_app():
             db.session.commit()
             print("✅ Datos iniciales creados.")
 
-
-    # Registra la nueva función como un comando de la CLI de Flask
-    app.cli.add_command(click.Command(seed_initial_data, name='seed-db'))
+    app.cli.add_command(seed_initial_data)
 
     # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader

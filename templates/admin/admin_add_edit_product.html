@@ -42,7 +42,7 @@
     {{ form.descripcion(class="form-control " ~ ('is-invalid' if form.descripcion.errors else ''), rows="4") }}
     {% if form.descripcion.errors %}
         <div class="comentarios no válidos">
-        {% por error en form.descripcion.errors %}
+      {% for error in form.descripcion.errors %}
             {{ error }}
         {% endfor %}
         </div>

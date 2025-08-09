@@ -185,14 +185,14 @@ class AffiliateStatistic(db.Model):
     __tablename__ = 'affiliate_statistics'
     id = db.Column(db.Integer, primary_key=True)
     affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliates.id'), nullable=False)
-    date = db.Column(db.Date, default=date.today)
+    date = db.Column(db.Date, default=date.today())
     clicks = db.Column(db.Integer, default=0)
     registrations = db.Column(db.Integer, default=0)
     sales = db.Column(db.Integer, default=0)
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
 
-    affiliate = db.relationship('Afiliado', backref='statistics', lazy=True)
+    affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
 
     def __repr__(self):
         return f'<AffiliateStatistic Affiliate: {self.affiliate_id}, Date: {self.date}>'

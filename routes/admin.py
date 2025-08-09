@@ -2,7 +2,7 @@
 
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, Producto, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
 from werkzeug.security import check_password_hash
 from extensions import db
 from sqlalchemy.exc import IntegrityError
@@ -70,9 +70,9 @@ def admin_logout():
 @bp.route('/dashboard')
 @admin_required
 def admin_dashboard():
-    productos_count = Producto.query.count()
-    categorias_count = Categoria.query.count()
-    articulos_count = Articulo.query.count()
+    productos_count = Product.query.count()
+    categorias_count = Category.query.count()
+    articulos_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
     afiliados_count = Afiliado.query.count()
@@ -91,11 +91,11 @@ def admin_dashboard():
 @bp.route('/products')
 @admin_required
 def admin_products():
-    productos = Producto.query.all()
+    productos = Product.query.all()
     category_lookup = {
         subcat.id: f"{cat.nombre} > {subcat.nombre}"
-        for cat in Categoria.query.options(joinedload(Categoria.subcategorias)).all()
-        for subcat in cat.subcategorias
+        for cat in Category.query.options(joinedload(Category.subcategories)).all()
+        for subcat in cat.subcategories
     }
     products_for_display = []
     for p in productos:
@@ -117,18 +117,15 @@ def admin_products():
 @admin_required
 def admin_add_product():
     form = ProductForm()
-    # The QuerySelectField automatically populates choices, so manually setting them is not needed.
-    # However, if you want a custom display, you can still use the query_factory in forms.py
     
     if form.validate_on_submit():
-        # Access the subcategory object directly from the form and get its ID
         selected_subcategoria_id = form.subcategoria.data.id if form.subcategoria.data else None
 
         external_id_value = form.external_id.data.strip()
         if external_id_value == '':
             external_id_value = None
 
-        new_product = Producto(
+        new_product = Product(
             nombre=form.nombre.data,
             slug=slugify(form.nombre.data),
             precio=form.precio.data,
@@ -154,11 +151,10 @@ def admin_add_product():
 @bp.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_product(product_id):
-    product = Producto.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
 
     if form.validate_on_submit():
-        # Access the subcategory object directly from the form and get its ID
         selected_subcategoria = form.subcategoria.data
         product.subcategoria_id = selected_subcategoria.id if selected_subcategoria else None
 
@@ -186,7 +182,7 @@ def admin_edit_product(product_id):
 @bp.route('/products/delete/<int:product_id>', methods=['POST'])
 @admin_required
 def admin_delete_product(product_id):
-    product = Producto.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     try:
         db.session.delete(product)
         db.session.commit()
@@ -200,7 +196,7 @@ def admin_delete_product(product_id):
 @bp.route('/categories')
 @admin_required
 def admin_categories():
-    categorias = Categoria.query.options(joinedload(Categoria.subcategorias)).all()
+    categorias = Category.query.options(joinedload(Category.subcategories)).all()
     return render_template('admin/admin_categories.html', categorias=categorias)
 
 @bp.route('/categories/add', methods=['GET', 'POST'])
@@ -208,14 +204,12 @@ def admin_categories():
 def admin_add_category():
     form = CategoryForm()
     if form.validate_on_submit():
-        # Check if a category with the same slug already exists
-        existing_category = Categoria.query.filter_by(slug=slugify(form.nombre.data)).first()
+        existing_category = Category.query.filter_by(slug=slugify(form.nombre.data)).first()
         if existing_category:
             flash('Error: Ya existe una categoría con ese nombre (o un slug similar).', 'danger')
-            # Update: Pass the form as 'category_form' to the template if validation fails
             return render_template('admin/admin_add_edit_category.html', category_form=form)
 
-        new_category = Categoria(nombre=form.nombre.data, slug=slugify(form.nombre.data))
+        new_category = Category(nombre=form.nombre.data, slug=slugify(form.nombre.data))
         try:
             db.session.add(new_category)
             db.session.commit()
@@ -228,13 +222,12 @@ def admin_add_category():
             db.session.rollback()
             flash(f'Error al añadir categoría: {e}', 'danger')
 
-    # Update: Pass the form as 'category_form' when rendering the template
     return render_template('admin/admin_add_edit_category.html', category_form=form)
 
 @bp.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_category(category_id):
-    category = Categoria.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     form = CategoryForm(obj=category)
     if form.validate_on_submit():
         form.populate_obj(category)
@@ -254,7 +247,7 @@ def admin_edit_category(category_id):
 @bp.route('/categories/delete/<int:category_id>', methods=['POST'])
 @admin_required
 def admin_delete_category(category_id):
-    category = Categoria.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     try:
         db.session.delete(category)
         db.session.commit()
@@ -267,16 +260,16 @@ def admin_delete_category(category_id):
 @bp.route('/categories/<int:category_id>/add_subcategory', methods=['GET', 'POST'])
 @admin_required
 def admin_add_subcategory(category_id):
-    category = Categoria.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     form = SubCategoryForm()
     if form.validate_on_submit():
         new_slug = slugify(form.nombre.data)
-        existing_subcategory = Subcategoria.query.filter_by(slug=new_slug, categoria_id=category.id).first()
+        existing_subcategory = Subcategory.query.filter_by(slug=new_slug, category_id=category.id).first()
         if existing_subcategory:
             flash(f'Error: Ya existe una subcategoría con el nombre "{form.nombre.data}" en esta categoría. Por favor, elige un nombre diferente.', 'danger')
             return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category)
 
-        new_subcategory = Subcategoria(nombre=form.nombre.data, slug=new_slug, categoria_id=category.id)
+        new_subcategory = Subcategory(nombre=form.nombre.data, slug=new_slug, category_id=category.id)
         try:
             db.session.add(new_subcategory)
             db.session.commit()
@@ -293,8 +286,8 @@ def admin_add_subcategory(category_id):
 @bp.route('/categories/<int:category_id>/edit_subcategory/<int:subcategory_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_subcategory(category_id, subcategory_id):
-    category = Categoria.query.get_or_404(category_id)
-    subcategory = Subcategoria.query.filter_by(id=subcategory_id, categoria_id=category_id).first_or_404()
+    category = Category.query.get_or_404(category_id)
+    subcategory = Subcategory.query.filter_by(id=subcategory_id, category_id=category_id).first_or_404()
     form = SubCategoryForm(obj=subcategory)
     if form.validate_on_submit():
         form.populate_obj(subcategory)
@@ -314,7 +307,7 @@ def admin_edit_subcategory(category_id, subcategory_id):
 @bp.route('/categories/<int:category_id>/delete_subcategory/<int:subcategory_id>', methods=['POST'])
 @admin_required
 def admin_delete_subcategory(category_id, subcategory_id):
-    subcategory = Subcategoria.query.filter_by(id=subcategory_id, categoria_id=category_id).first_or_404()
+    subcategory = Subcategory.query.filter_by(id=subcategory_id, category_id=category_id).first_or_404()
     try:
         db.session.delete(subcategory)
         db.session.commit()
@@ -328,7 +321,7 @@ def admin_delete_subcategory(category_id, subcategory_id):
 @bp.route('/articles')
 @admin_required
 def admin_articles():
-    articulos = Articulo.query.order_by(Articulo.fecha.desc()).all()
+    articulos = Article.query.order_by(Article.fecha.desc()).all()
     return render_template('admin/admin_articles.html', articulos=articulos)
 
 @bp.route('/articles/add', methods=['GET', 'POST'])
@@ -336,7 +329,7 @@ def admin_articles():
 def admin_add_article():
     form = ArticleForm()
     if form.validate_on_submit():
-        new_article = Articulo(
+        new_article = Article(
             titulo=form.titulo.data,
             slug=slugify(form.titulo.data),
             contenido=form.contenido.data,
@@ -360,7 +353,7 @@ def admin_add_article():
 @bp.route('/articles/edit/<int:article_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_article(article_id):
-    article = Articulo.query.get_or_404(article_id)
+    article = Article.query.get_or_404(article_id)
     form = ArticleForm(obj=article)
     if form.validate_on_submit():
         form.populate_obj(article)
@@ -380,7 +373,7 @@ def admin_edit_article(article_id):
 @bp.route('/articles/delete/<int:article_id>', methods=['POST'])
 @admin_required
 def admin_delete_article(article_id):
-    article = Articulo.query.get_or_404(article_id)
+    article = Article.query.get_or_404(article_id)
     try:
         db.session.delete(article)
         db.session.commit()
@@ -396,7 +389,6 @@ def admin_delete_article(article_id):
 def admin_api_products():
     sync_info = SyncInfo.query.first()
     if not sync_info:
-        # Initialize SyncInfo if it doesn't exist
         sync_info = SyncInfo(last_sync_time="N/A", last_sync_count=0, last_synced_api_url="N/A")
         db.session.add(sync_info)
         db.session.commit()
@@ -776,18 +768,14 @@ def admin_add_advertisement():
             flash(f'Error al añadir anuncio: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form)
 
+
 @bp.route('/advertisements/edit/<int:advertisement_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_advertisement(advertisement_id):
     advertisement = Advertisement.query.get_or_404(advertisement_id)
     form = AdvertisementForm(obj=advertisement)
 
-    if request.method == 'GET':
-        # Need to set the product data correctly for QuerySelectField
-        form.product.data = advertisement.product
-
     if form.validate_on_submit():
-        # Handle product field separately as it's a QuerySelectField
         form.populate_obj(advertisement)
         advertisement.product_id = form.product.data.id if form.product.data else None
         
@@ -800,7 +788,6 @@ def admin_edit_advertisement(advertisement_id):
             flash(f'Error al actualizar anuncio: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form, advertisement=advertisement)
 
-
 @bp.route('/advertisements/delete/<int:advertisement_id>', methods=['POST'])
 @admin_required
 def admin_delete_advertisement(advertisement_id):
@@ -808,13 +795,13 @@ def admin_delete_advertisement(advertisement_id):
     try:
         db.session.delete(advertisement)
         db.session.commit()
-        flash('Anuncio eliminado permanentemente.', 'success')
+        flash('Anuncio eliminado exitosamente!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar anuncio: {e}', 'danger')
     return redirect(url_for('admin.admin_advertisements'))
 
-# --- Admin Affiliate Management ---
+# --- Admin Affiliates Management ---
 @bp.route('/affiliates')
 @admin_required
 def admin_affiliates():
@@ -828,9 +815,9 @@ def admin_add_affiliate():
     if form.validate_on_submit():
         new_affiliate = Afiliado(
             nombre=form.nombre.data,
-            email=form.email.data,
-            enlace_referido=form.enlace_referido.data,
-            activo=form.activo.data
+            codigo=form.codigo.data,
+            comision=form.comision.data,
+            email=form.email.data
         )
         try:
             db.session.add(new_affiliate)
@@ -839,7 +826,7 @@ def admin_add_affiliate():
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
+            flash('Error: Ya existe un afiliado con ese código o email.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al añadir afiliado: {e}', 'danger')
@@ -858,7 +845,7 @@ def admin_edit_affiliate(affiliate_id):
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
+            flash('Error: Ya existe un afiliado con ese código o email.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar afiliado: {e}', 'danger')
@@ -878,50 +865,95 @@ def admin_delete_affiliate(affiliate_id):
     return redirect(url_for('admin.admin_affiliates'))
 
 # --- Admin Affiliate Statistics Management ---
-@bp.route('/affiliate_stats', methods=['GET', 'POST'])
+@bp.route('/affiliates/<int:affiliate_id>/statistics')
 @admin_required
-def admin_affiliate_stats():
+def admin_affiliate_statistics(affiliate_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    statistics = EstadisticaAfiliado.query.filter_by(afiliado_id=affiliate_id).order_by(EstadisticaAfiliado.fecha.desc()).all()
+    return render_template('admin/admin_affiliate_statistics.html', affiliate=affiliate, statistics=statistics)
+
+@bp.route('/affiliates/<int:affiliate_id>/statistics/add', methods=['GET', 'POST'])
+@admin_required
+def admin_add_affiliate_statistic(affiliate_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
     form = AffiliateStatisticForm()
-    stats = []
-    
     if form.validate_on_submit():
-        query = EstadisticaAfiliado.query
-        
-        # Filter by affiliate if selected
-        if form.afiliado.data:
-            query = query.filter_by(afiliado_id=form.afiliado.data.id)
-            
-        # Filter by date range if provided
-        if form.start_date.data:
-            query = query.filter(EstadisticaAfiliado.timestamp >= form.start_date.data)
-        
-        if form.end_date.data:
-            query = query.filter(EstadisticaAfiliado.timestamp <= form.end_date.data)
+        new_statistic = EstadisticaAfiliado(
+            afiliado_id=affiliate.id,
+            fecha=form.fecha.data,
+            ventas=form.ventas.data,
+            clics=form.clics.data,
+            ganancias=form.ganancias.data
+        )
+        try:
+            db.session.add(new_statistic)
+            db.session.commit()
+            flash('Estadística de afiliado añadida exitosamente!', 'success')
+            return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al añadir estadística: {e}', 'danger')
+    return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate)
 
-        stats = query.order_by(EstadisticaAfiliado.timestamp.desc()).all()
+@bp.route('/affiliates/<int:affiliate_id>/statistics/edit/<int:statistic_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_affiliate_statistic(affiliate_id, statistic_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    statistic = EstadisticaAfiliado.query.filter_by(id=statistic_id, afiliado_id=affiliate_id).first_or_404()
+    form = AffiliateStatisticForm(obj=statistic)
+    if form.validate_on_submit():
+        form.populate_obj(statistic)
+        try:
+            db.session.commit()
+            flash('Estadística de afiliado actualizada exitosamente!', 'success')
+            return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar estadística: {e}', 'danger')
+    return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate, statistic=statistic)
 
-    return render_template('admin/admin_affiliate_stats.html', form=form, stats=stats)
+@bp.route('/affiliates/<int:affiliate_id>/statistics/delete/<int:statistic_id>', methods=['POST'])
+@admin_required
+def admin_delete_affiliate_statistic(affiliate_id, statistic_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    statistic = EstadisticaAfiliado.query.filter_by(id=statistic_id, afiliado_id=affiliate_id).first_or_404()
+    try:
+        db.session.delete(statistic)
+        db.session.commit()
+        flash('Estadística de afiliado eliminada exitosamente!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar estadística: {e}', 'danger')
+    return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
 
-# --- Admin Adsense Configuration Management ---
-@bp.route('/adsense_config', methods=['GET', 'POST'])
+# --- Admin Adsense Config Management ---
+@bp.route('/adsense_config')
 @admin_required
 def admin_adsense_config():
+    config = AdsenseConfig.query.first()
+    form = AdsenseConfigForm(obj=config)
+    return render_template('admin/admin_adsense_config.html', form=form, config=config)
+
+@bp.route('/adsense_config/save', methods=['POST'])
+@admin_required
+def admin_save_adsense_config():
     config = AdsenseConfig.query.first()
     if not config:
         config = AdsenseConfig()
         db.session.add(config)
-        db.session.commit()
-    
+        
     form = AdsenseConfigForm(obj=config)
-    
     if form.validate_on_submit():
         form.populate_obj(config)
         try:
             db.session.commit()
             flash('Configuración de AdSense guardada exitosamente!', 'success')
-            return redirect(url_for('admin.admin_adsense_config'))
         except Exception as e:
             db.session.rollback()
             flash(f'Error al guardar la configuración de AdSense: {e}', 'danger')
-            
-    return render_template('admin/admin_adsense_config.html', form=form)
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error en {getattr(form, field).label.text}: {error}", 'danger')
+    
+    return redirect(url_for('admin.admin_adsense_config'))

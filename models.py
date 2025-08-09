@@ -192,6 +192,7 @@ class AffiliateStatistic(db.Model):
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
 
+    # CORRECCIÓN: 'backref' debe referirse al nombre de la clase, 'Affiliate', no 'Afiliado'.
     affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
 
     def __repr__(self):
@@ -199,7 +200,7 @@ class AffiliateStatistic(db.Model):
 
 # ---
 class AdsenseConfig(db.Model):
-    """Model for AdSense configuration."""
+    """Modelo para la configuración de AdSense."""
     __tablename__ = 'adsense_configs'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)
@@ -207,7 +208,7 @@ class AdsenseConfig(db.Model):
     adsense_slot_sidebar = db.Column(db.String(50), nullable=True)
     adsense_slot_article_top = db.Column(db.String(50), nullable=True)
     adsense_slot_article_bottom = db.Column(db.String(50), nullable=True)
-    status = db.Column(db.String(20), default='active', nullable=False)
+    is_active = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 

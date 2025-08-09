@@ -7,10 +7,11 @@ from wtforms.validators import (
     DataRequired, URL, NumberRange, Optional, Length, ValidationError, Email
 )
 from wtforms_sqlalchemy.fields import QuerySelectField
-# --- CORRECCIÓN ---
-# La clase debe llamarse 'Product' en lugar de 'Producto' para coincidir con la definición del modelo.
-# The corrected line will only import the classes that are used in this file.
-from models import Product, Afiliado, Categoria, Subcategoria
+
+# --- CORRECCIÓN: Se importan los nombres correctos de las clases del modelo ---
+# La clase debe llamarse 'Product' en lugar de 'Producto', etc.
+from models import Product, Affiliate, Category, Subcategory
+
 # --- Custom validator for relative paths or full URLs ---
 def validate_image_path(form, field):
     """
@@ -30,16 +31,18 @@ class LoginForm(FlaskForm):
 
 class ProductForm(FlaskForm):
     """Form for creating and editing products."""
-    nombre = StringField('Nombre del Producto', validators=[DataRequired(), Length(min=2, max=200)])
-    precio = FloatField('Precio', validators=[DataRequired(), NumberRange(min=0.01, message='El precio debe ser un número positivo.')])
-    descripcion = TextAreaField('Descripción', validators=[Optional()])
-    imagen = StringField('URL de la Imagen', validators=[Optional(), validate_image_path])
+    name = StringField('Nombre del Producto', validators=[DataRequired(), Length(min=2, max=200)])
+    price = FloatField('Precio', validators=[DataRequired(), NumberRange(min=0.01, message='El precio debe ser un número positivo.')])
+    description = TextAreaField('Descripción', validators=[Optional()])
+    image = StringField('URL de la Imagen', validators=[Optional(), validate_image_path])
     link = StringField('Enlace de Afiliado', validators=[DataRequired(), URL(message='Por favor, introduce una URL válida.')])
-    subcategoria = QuerySelectField(
+    
+    # CORRECCIÓN: Se usa 'Subcategory' en lugar de 'Subcategoria' y 'name' en lugar de 'nombre'
+    subcategory = QuerySelectField(
         'Subcategoría',
-        query_factory=lambda: Subcategoria.query.order_by(Subcategoria.nombre).all(),
+        query_factory=lambda: Subcategory.query.order_by(Subcategory.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
         blank_text='-- Selecciona una Subcategoría --',
         validators=[Optional()]
@@ -49,27 +52,29 @@ class ProductForm(FlaskForm):
 
 class CategoryForm(FlaskForm):
     """Form for creating and editing categories."""
-    nombre = StringField('Nombre de la Categoría', validators=[DataRequired(), Length(min=2, max=100)])
+    name = StringField('Nombre de la Categoría', validators=[DataRequired(), Length(min=2, max=100)])
     submit = SubmitField('Guardar Categoría')
 
 class SubCategoryForm(FlaskForm):
     """Form for creating and editing subcategories."""
-    nombre = StringField('Nombre de la Subcategoría', validators=[DataRequired(), Length(min=2, max=100)])
-    categoria = QuerySelectField(
+    name = StringField('Nombre de la Subcategoría', validators=[DataRequired(), Length(min=2, max=100)])
+    
+    # CORRECCIÓN: Se usa 'Category' en lugar de 'Categoria' y 'name' en lugar de 'nombre'
+    category = QuerySelectField(
         'Categoría',
-        query_factory=lambda: Categoria.query.order_by(Categoria.nombre).all(),
+        query_factory=lambda: Category.query.order_by(Category.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         validators=[DataRequired(message='Por favor, selecciona una categoría.')]
     )
     submit = SubmitField('Guardar Subcategoría')
 
 class ArticleForm(FlaskForm):
     """Form for creating and editing articles."""
-    titulo = StringField('Título del Artículo', validators=[DataRequired(), Length(min=5, max=200)])
-    contenido = TextAreaField('Contenido del Artículo', validators=[DataRequired()])
-    autor = StringField('Autor', validators=[Optional(), Length(max=100)])
-    imagen = StringField('URL de la Imagen (Opcional)', validators=[Optional(), validate_image_path])
+    title = StringField('Título del Artículo', validators=[DataRequired(), Length(min=5, max=200)])
+    content = TextAreaField('Contenido del Artículo', validators=[DataRequired()])
+    author = StringField('Autor', validators=[Optional(), Length(max=100)])
+    image = StringField('URL de la Imagen (Opcional)', validators=[Optional(), validate_image_path])
     submit = SubmitField('Guardar Artículo')
 
 class ApiSyncForm(FlaskForm):
@@ -108,7 +113,7 @@ class TestimonialForm(FlaskForm):
 class PublicTestimonialForm(FlaskForm):
     """Form for users to submit a testimonial."""
     author = StringField('Tu Nombre', validators=[DataRequired(), Length(min=2, max=100)])
-    contenido = TextAreaField('Tu Testimonio', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
+    content = TextAreaField('Tu Testimonio', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
     fax_number = StringField('Número de Fax (no rellenar)', validators=[Optional()])
     submit = SubmitField('Enviar Testimonio')
 
@@ -130,11 +135,12 @@ class AdvertisementForm(FlaskForm):
     button_text = StringField('Texto del Botón', validators=[Optional(), Length(max=100)])
     button_url = StringField('URL del Botón', validators=[Optional(), URL()])
 
-    producto = QuerySelectField(
+    # CORRECCIÓN: Se usa 'Product' en lugar de 'Producto' y 'name' en lugar de 'nombre'
+    product = QuerySelectField(
         'Producto Recomendado',
-        query_factory=lambda: Product.query.order_by(Product.nombre).all(),
+        query_factory=lambda: Product.query.order_by(Product.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
         blank_text='-- Selecciona un Producto --',
         validators=[Optional()]
@@ -154,9 +160,9 @@ class AdvertisementForm(FlaskForm):
             return False
 
         if self.type.data == 'recomendado':
-            if not self.producto.data and not self.image_url.data:
+            if not self.product.data and not self.image_url.data:
                 msg = 'Debes seleccionar un producto o proporcionar una URL de imagen.'
-                self.producto.errors.append(msg)
+                self.product.errors.append(msg)
                 self.image_url.errors.append(msg)
                 return False
         elif self.type.data in ['destacado', 'mas_vendido']:
@@ -179,21 +185,23 @@ class AdvertisementForm(FlaskForm):
 # --- Affiliate Forms (Moved from admin.py) ---
 class AffiliateForm(FlaskForm):
     """Form for creating and editing affiliates."""
-    nombre = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=100)])
+    name = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Length(max=120), Email()])
-    enlace_referido = StringField('Enlace de Referido', validators=[DataRequired(), URL()])
-    activo = BooleanField('Activo', default=True)
+    referral_link = StringField('Enlace de Referido', validators=[DataRequired(), URL()])
+    is_active = BooleanField('Activo', default=True)
     submit = SubmitField('Guardar Afiliado')
 
 class AffiliateStatisticForm(FlaskForm):
     """Form for generating affiliate statistics reports."""
     start_date = DateTimeLocalField('Fecha de Inicio', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     end_date = DateTimeLocalField('Fecha de Fin', format='%Y-%m-%dT%H:%M', validators=[Optional()])
-    afiliado = QuerySelectField(
+    
+    # CORRECCIÓN: Se usa 'Affiliate' en lugar de 'Afiliado' y 'name' en lugar de 'nombre'
+    affiliate = QuerySelectField(
         'Afiliado',
-        query_factory=lambda: Afiliado.query.order_by(Afiliado.nombre).all(),
+        query_factory=lambda: Affiliate.query.order_by(Affiliate.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
         blank_text='-- Todos los Afiliados --',
         validators=[Optional()]

@@ -30,7 +30,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
         </div>
       </a>
       <div class="card-body d-flex flex-column p-3">
-        <h3 class="card-title h6 mb-2 fw-bold text-truncate" title="{{ p.nombre }}">
+        <h3 class="card-title h6 fw-bold product-title" title="{{ p.nombre }}">
           <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" 
              class="text-decoration-none text-dark stretched-link">
             {{ p.nombre }}
@@ -94,7 +94,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
 {% endif %}
 
 <style>
-/* Efecto de hover para tarjetas */
+/* Efecto hover en tarjetas */
 .transition-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -103,9 +103,27 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.1);
 }
 
-/* Mantener imagen recortada de forma uniforme */
+/* Imágenes recortadas uniformemente */
 .object-fit-cover {
   object-fit: cover;
+}
+
+/* Títulos alineados y limitados a 2 líneas */
+.product-title {
+  min-height: 3rem; /* Obliga a que todos los títulos ocupen al menos la misma altura */
+  display: -webkit-box; /* Necesario para que funcione el "line clamp" */
+  -webkit-box-orient: vertical; /* Orienta el recorte en vertical */
+  overflow: hidden; /* Oculta el texto sobrante que pasa del límite */
+}
+
+
+/* Asegurar que botones queden abajo */
+.card-body {
+  display: flex;
+  flex-direction: column;
+}
+.card-body .mt-auto {
+  margin-top: auto;
 }
 </style>
 {% endblock %}

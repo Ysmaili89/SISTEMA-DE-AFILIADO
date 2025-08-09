@@ -33,6 +33,7 @@ def convert_to_utf8(filename):
         return True
     except FileNotFoundError:
         print(f"⚠️ Error: Archivo '{filename}' no encontrado.")
+        return False
     except Exception as e:
         print(f"❌ Ocurrió un error al convertir el archivo: {e}")
         return False

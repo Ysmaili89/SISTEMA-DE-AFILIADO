@@ -17,15 +17,14 @@ import markdown
 # Importaciones de aplicaciones locales
 from extensions import db, login_manager
 from models import (
-    SocialMediaLink, User, Categoria, Subcategoria,
-    Producto, Articulo, Testimonial, Afiliado, AdsenseConfig,
-    EstadisticaAfiliado
+    SocialMediaLink, User, Category, Subcategory,
+    Product, Article, Testimonial, Affiliate, AdsenseConfig,
+    AffiliateStatistic
 )
 from utils import slugify
 
 # Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
-
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
 # Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
@@ -68,7 +67,9 @@ def create_app():
     # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        db.create_all() # ADVERTENCIA: Esta línea crea tablas, pero es mejor usar migraciones.
+        # ADVERTENCIA: Se comenta db.create_all() para evitar conflictos con Flask-Migrate.
+        # db.create_all()
+        pass
     
     # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
     # Comandos:
@@ -94,17 +95,19 @@ def create_app():
             if config:
                 return dict(
                     adsense_client_id=config.adsense_client_id,
-                    adsense_slot_1=config.adsense_slot_1,
-                    adsense_slot_2=config.adsense_slot_2,
-                    adsense_slot_3=config.adsense_slot_3,
+                    adsense_slot_header=config.adsense_slot_header,
+                    adsense_slot_sidebar=config.adsense_slot_sidebar,
+                    adsense_slot_article_top=config.adsense_slot_article_top,
+                    adsense_slot_article_bottom=config.adsense_slot_article_bottom
                 )
         except Exception:
             pass
         return dict(
             adsense_client_id='',
-            adsense_slot_1='',
-            adsense_slot_2='',
-            adsense_slot_3=''
+            adsense_slot_header='',
+            adsense_slot_sidebar='',
+            adsense_slot_article_top='',
+            adsense_slot_article_bottom=''
         )
 
     @app.context_processor
@@ -143,20 +146,21 @@ def create_app():
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
 
-            if not Afiliado.query.filter_by(email='afiliado@example.com').first():
-                db.session.add(Afiliado(
-                    nombre='Afiliado de Prueba',
+            if not Affiliate.query.filter_by(email='afiliado@example.com').first():
+                db.session.add(Affiliate(
+                    name='Afiliado de Prueba',
                     email='afiliado@example.com',
-                    enlace_referido='http://localhost:5000/ref/1',
-                    activo=True
+                    referral_link='http://localhost:5000/ref/1',
+                    is_active=True
                 ))
 
             if not AdsenseConfig.query.first():
                 db.session.add(AdsenseConfig(
                     adsense_client_id='ca-pub-1234567890123456',
-                    adsense_slot_1='1111111111',
-                    adsense_slot_2='2222222222',
-                    adsense_slot_3='3333333333'
+                    adsense_slot_header='1111111111',
+                    adsense_slot_sidebar='2222222222',
+                    adsense_slot_article_top='3333333333',
+                    adsense_slot_article_bottom='4444444444'
                 ))
 
             categorias = {
@@ -166,11 +170,11 @@ def create_app():
             }
             subcategorias_db = {}
             for cat_nombre, sub_nombres in categorias.items():
-                categoria = Categoria(nombre=cat_nombre, slug=slugify(cat_nombre))
+                categoria = Category(name=cat_nombre, slug=slugify(cat_nombre))
                 db.session.add(categoria)
                 db.session.flush()
                 for sub_nombre in sub_nombres:
-                    subcategoria = Subcategoria(nombre=sub_nombre, slug=slugify(sub_nombre), categoria=categoria)
+                    subcategoria = Subcategory(name=sub_nombre, slug=slugify(sub_nombre), category=categoria)
                     db.session.add(subcategoria)
                     subcategorias_db[sub_nombre] = subcategoria
 
@@ -184,28 +188,28 @@ def create_app():
                 # Asigna productos a las subcategorías de manera cíclica
                 subcat = subcategorias_list[i % len(subcategorias_list)]
                 
-                db.session.add(Producto(
-                    nombre=nombre,
+                db.session.add(Product(
+                    name=nombre,
                     slug=slugify(nombre),
-                    precio=precio,
-                    descripcion=desc,
-                    imagen=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
+                    price=precio,
+                    description=desc,
+                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
                     link=f'https://ejemplo.com/{slugify(nombre)}',
-                    subcategoria_id=subcat.id
+                    subcategory_id=subcat.id
                 ))
 
             articulos = [
                 ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
             ]
-            for titulo, contenido, autor, imagen_texto in articulos:
-                db.session.add(Articulo(
-                    titulo=titulo,
-                    slug=slugify(titulo),
-                    contenido=f'<p>{contenido}</p>',
-                    autor=autor,
-                    fecha=datetime.now(timezone.utc),
-                    imagen=f'https://placehold.co/800x400/e0e0e0/555555?text={imagen_texto}'
+            for title, content, author, image_text in articulos:
+                db.session.add(Article(
+                    title=title,
+                    slug=slugify(title),
+                    content=f'<p>{content}</p>',
+                    author=author,
+                    date=datetime.now(timezone.utc),
+                    image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
                 ))
 
             redes = [
@@ -215,8 +219,8 @@ def create_app():
                 ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
                 ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
             ]
-            for nombre, url, icono in redes:
-                db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
+            for name, url, icon in redes:
+                db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
 
             db.session.add(Testimonial(
                 author="Juan Pérez",
@@ -242,9 +246,10 @@ def create_app():
     @public_bp.route('/')
     @public_bp.route('/index')
     def index():
-        productos = Producto.query.order_by(Producto.id.desc()).limit(12).all()
+        productos = Product.query.order_by(Product.id.desc()).limit(12).all()
         testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
         return render_template('public/index.html', productos=productos, testimonios=testimonios)
+
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app
 

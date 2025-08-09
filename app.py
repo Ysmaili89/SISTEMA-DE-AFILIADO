@@ -1,6 +1,5 @@
 # app.py
-
-# Importaciones de bibliotecas estÃ¡ndar
+# Importaciones de bibliotecas estándar
 import os
 import click
 from datetime import datetime, timezone, date
@@ -31,24 +30,24 @@ from babel.numbers import format_currency as babel_format_currency
 # Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
 
-# -------------------- CONFIGURACIÃN DE FLASK-BABEL --------------------
+# -------------------- CONFIGURACIÓN DE FLASK-BABEL --------------------
 def get_application_locale():
-    # Esta funciÃ³n determina el 'locale' para Flask-Babel
+    # Esta función determina el 'locale' para Flask-Babel
     return 'es'
 
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
     # Inyecta enlaces de redes sociales en el contexto de Jinja2
-    # El cÃ³digo fallaba aquÃ­ porque la columna 'order_num' no existÃ­a
-    # en la base de datos. Se soluciona forzando la creaciÃ³n de la tabla.
+    # El código fallaba aquí porque la columna 'order_num' no existía
+    # en la base de datos. Se soluciona forzando la creación de la tabla.
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
-# -------------------- FÃBRICA DE APLICACIONES PRINCIPALES --------------------
+# -------------------- FÁBRICA DE APLICACIONES PRINCIPALES --------------------
 def create_app():
     app = Flask(__name__)
 
-    # ----------- CONFIGURACIONES BÃSICAS -----------
+    # ----------- CONFIGURACIONES BÁSICAS -----------
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key_for_dev_only')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -66,18 +65,18 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÃN: Se ha eliminado el bloque de cÃ³digo que borraba y recreaba
+    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
     # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
     # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        # db.drop_all()  # ADVERTENCIA: Esta lÃ­nea borra todos los datos.
-        db.create_all() # ADVERTENCIA: Esta lÃ­nea crea tablas, pero es mejor usar migraciones.
+        # db.drop_all()  # ADVERTENCIA: Esta línea borra todos los datos.
+        db.create_all() # ADVERTENCIA: Esta línea crea tablas, pero es mejor usar migraciones.
     
-    # DespuÃ©s de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
+    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
     # Comandos:
     # 1. flask db init (solo la primera vez)
-    # 2. flask db migrate -m "Mensaje de la migraciÃ³n"
+    # 2. flask db migrate -m "Mensaje de la migración"
     # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
@@ -88,7 +87,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp)
 
-    # ----------- INYECCIÃN DE CONTEXTO GLOBAL -----------
+    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
     app.context_processor(inject_social_media_links)
 
     @app.context_processor
@@ -136,12 +135,12 @@ def create_app():
     # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
-        """Crea datos iniciales para la aplicaciÃ³n si no existen."""
+        """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
-            print("âï¸ Creando datos iniciales...")
+            print("⚙️ Creando datos iniciales...")
             
             if User.query.first():
-                print("â¹ï¸ Los usuarios ya existen. Saltando la creaciÃ³n de datos iniciales.")
+                print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
                 return
 
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
@@ -164,38 +163,42 @@ def create_app():
                 ))
 
             categorias = {
-                'TecnologÃ­a': ['Smartphones', 'Laptops'],
-                'Hogar': ['Cocina', 'JardÃ­n'],
+                'Tecnología': ['Smartphones', 'Laptops'],
+                'Hogar': ['Cocina', 'Jardín'],
                 'Deportes': ['Fitness']
             }
-            for cat, subs in categorias.items():
-                categoria = Categoria(nombre=cat, slug=slugify(cat))
+            subcategorias_db = {}
+            for cat_nombre, sub_nombres in categorias.items():
+                categoria = Categoria(nombre=cat_nombre, slug=slugify(cat_nombre))
                 db.session.add(categoria)
                 db.session.flush()
-                for sub in subs:
-                    db.session.add(Subcategoria(nombre=sub, slug=slugify(sub), categoria=categoria))
+                for sub_nombre in sub_nombres:
+                    subcategoria = Subcategoria(nombre=sub_nombre, slug=slugify(sub_nombre), categoria=categoria)
+                    db.session.add(subcategoria)
+                    subcategorias_db[sub_nombre] = subcategoria
 
-            productos = [
-                ('Smartphone Pro X', 899.99, 'Smartphone con cÃ¡mara de alta resoluciÃ³n y baterÃ­a duradera.', 'Smartphones'),
-                ('Laptop UltraBook', 1200.00, 'Laptop ligera y potente.', 'Laptops'),
-                ('Batidora Multifuncional', 75.50, 'Batidora de cocina versÃ¡til.', 'Cocina'),
-                ('Mancuernas Ajustables', 150.00, 'Set de mancuernas para entrenar en casa.', 'Fitness'),
-            ]
-            for nombre, precio, desc, subcat_nombre in productos:
-                subcat = Subcategoria.query.filter_by(nombre=subcat_nombre).first()
-                if subcat:
-                    db.session.add(Producto(
-                        nombre=nombre,
-                        slug=slugify(nombre),
-                        precio=precio,
-                        descripcion=desc,
-                        imagen=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
-                        link=f'https://ejemplo.com/{slugify(nombre)}',
-                        subcategoria_id=subcat.id
-                    ))
+            # Genera 50 productos de ejemplo
+            subcategorias_list = list(subcategorias_db.values())
+            for i in range(1, 51):
+                nombre = f"Producto Ejemplo {i}"
+                precio = 10.0 + (i * 5)
+                desc = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
+                
+                # Asigna productos a las subcategorías de manera cíclica
+                subcat = subcategorias_list[i % len(subcategorias_list)]
+                
+                db.session.add(Producto(
+                    nombre=nombre,
+                    slug=slugify(nombre),
+                    precio=precio,
+                    descripcion=desc,
+                    imagen=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
+                    link=f'https://ejemplo.com/{slugify(nombre)}',
+                    subcategoria_id=subcat.id
+                ))
 
             articulos = [
-                ('GuÃ­a para elegir tu primer smartphone', 'Contenido guÃ­a smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
+                ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
             ]
             for titulo, contenido, autor, imagen_texto in articulos:
@@ -219,8 +222,8 @@ def create_app():
                 db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
 
             db.session.add(Testimonial(
-                author="Juan PÃ©rez",
-                content="Â¡Excelente sitio! EncontrÃ© el producto perfecto.",
+                author="Juan Pérez",
+                content="¡Excelente sitio! Encontré el producto perfecto.",
                 date_posted=datetime.now(timezone.utc),
                 is_visible=True,
                 likes=5,
@@ -228,30 +231,30 @@ def create_app():
             ))
 
             db.session.commit()
-            print("â Datos iniciales creados.")
+            print("✅ Datos iniciales creados.")
 
     app.cli.add_command(seed_initial_data)
 
-    # ----------- ADMINISTRADOR DE INICIO DE SESIÃN -----------
+    # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
 
-    # ----------- FIN DE LA FÃBRICA DE APLICACIONES -----------
+    # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app
 
-# -------------------- ESTABLECER CONTRASEÃA DE ADMINISTRADOR --------------------
+# -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
 def set_admin_password(app, new_password):
     with app.app_context():
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
             admin_user.password_hash = generate_password_hash(new_password)
             db.session.commit()
-            print("ContraseÃ±a actualizada para 'admin'.")
+            print("Contraseña actualizada para 'admin'.")
         else:
             print("Usuario 'admin' no encontrado.")
 
-# -------------------- EJECUCIÃN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():

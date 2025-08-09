@@ -2,14 +2,14 @@
 
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
 from werkzeug.security import check_password_hash
 from extensions import db
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
 
-# Importar todos los formularios necesarios
+# Import all necessary forms
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
 
 from utils import slugify
@@ -19,417 +19,432 @@ import functools
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# Decorador personalizado para garantizar que el usuario sea un administrador
+# --- Decorator for admin-only access ---
 def admin_required(f):
+    """Custom decorator to ensure the user is an administrator."""
     @functools.wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_admin:
-            flash('Acceso denegado: No tienes permisos de administrador.', 'danger')
+            flash('Access denied: You do not have administrator permissions.', 'danger')
             return redirect(url_for('admin.admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
+# --- Authentication Routes ---
 @bp.route('/login', methods=['GET', 'POST'])
 def admin_login():
+    """Handles admin login."""
     if current_user.is_authenticated and current_user.is_admin:
         return redirect(url_for('admin.admin_dashboard'))
 
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        print(f"Attempting login for username: {username}")
-        user = User.query.filter_by(username=username).first()
-        if user:
-            print(f"User found: {user.username}, Is Admin: {user.is_admin}")
-            print(f"Password hash from DB: {user.password_hash}")
-            password_check = check_password_hash(user.password_hash, password)
-            print(f"Password check result: {password_check}")
-            if password_check:
-                if user.is_admin:
-                    login_user(user)
-                    flash('Inicio de sesión exitoso como administrador.', 'success')
-                    next_page = request.args.get('next')
-                    return redirect(next_page or url_for('admin.admin_dashboard'))
-                else:
-                    flash('Acceso denegado: No tienes permisos de administrador.', 'danger')
-            else:
-                flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+        user = User.query.filter_by(username=form.username.data).first()
+        if user and user.check_password(form.password.data) and user.is_admin:
+            login_user(user)
+            flash('Login successful as an administrator.', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('admin.admin_dashboard'))
         else:
-            flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+            flash('Invalid username or password.', 'danger')
     return render_template('admin/admin_login.html', form=form)
 
 @bp.route('/logout')
 @admin_required
 def admin_logout():
+    """Logs the admin user out."""
     logout_user()
-    flash('Has cerrado sesión.', 'info')
+    flash('You have been logged out.', 'info')
     return redirect(url_for('admin.admin_login'))
 
+# --- Main Dashboard ---
 @bp.route('/dashboard')
 @admin_required
 def admin_dashboard():
-    productos_count = Product.query.count()
-    categorias_count = Category.query.count()
-    articulos_count = Article.query.count()
+    """Displays the admin dashboard with summary statistics."""
+    product_count = Product.query.count()
+    category_count = Category.query.count()
+    article_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
-    afiliados_count = Afiliado.query.count()
-    estadisticas_afiliados_count = EstadisticaAfiliado.query.count()
+    affiliate_count = Affiliate.query.count()
+    affiliate_statistic_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
-                            productos_count=productos_count,
-                            categorias_count=categorias_count,
-                            articulos_count=articulos_count,
-                            unread_messages_count=unread_messages_count,
-                            pending_testimonials_count=pending_testimonials_count,
-                            afiliados_count=afiliados_count,
-                            estadisticas_afiliados_count=estadisticas_afiliados_count)
+                           product_count=product_count,
+                           category_count=category_count,
+                           article_count=article_count,
+                           unread_messages_count=unread_messages_count,
+                           pending_testimonials_count=pending_testimonials_count,
+                           affiliate_count=affiliate_count,
+                           affiliate_statistic_count=affiliate_statistic_count)
 
-# --- Admin Products Management ---
+# --- Product Management ---
 @bp.route('/products')
 @admin_required
 def admin_products():
-    productos = Product.query.all()
+    """Displays a list of all products."""
+    products = Product.query.all()
     category_lookup = {
-        subcat.id: f"{cat.nombre} > {subcat.nombre}"
+        subcat.id: f"{cat.name} > {subcat.name}"
         for cat in Category.query.options(joinedload(Category.subcategories)).all()
         for subcat in cat.subcategories
     }
-    products_for_display = []
-    for p in productos:
-        products_for_display.append({
+    products_for_display = [
+        {
             "id": p.id,
-            "nombre": p.nombre,
+            "name": p.name,
             "slug": p.slug,
-            "precio": p.precio,
-            "descripcion": p.descripcion,
-            "imagen": p.imagen,
+            "price": p.price,
+            "description": p.description,
+            "image": p.image,
             "link": p.link,
-            "subcategoria_id": p.subcategoria_id,
+            "subcategory_id": p.subcategory_id,
             "external_id": p.external_id,
-            "categoria_display_name": category_lookup.get(p.subcategoria_id, 'Desconocida')
-        })
-    return render_template('admin/admin_products.html', productos=products_for_display)
+            "category_display_name": category_lookup.get(p.subcategory_id, 'Uncategorized')
+        } for p in products
+    ]
+    return render_template('admin/admin_products.html', products=products_for_display)
 
 @bp.route('/products/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_product():
+    """Adds a new product."""
     form = ProductForm()
     
     if form.validate_on_submit():
-        selected_subcategoria_id = form.subcategoria.data.id if form.subcategoria.data else None
+        selected_subcategory_id = form.subcategory.data.id if form.subcategory.data else None
 
         external_id_value = form.external_id.data.strip()
-        if external_id_value == '':
+        if not external_id_value:
             external_id_value = None
 
         new_product = Product(
-            nombre=form.nombre.data,
-            slug=slugify(form.nombre.data),
-            precio=form.precio.data,
-            descripcion=form.descripcion.data,
-            imagen=form.imagen.data,
+            name=form.name.data,
+            slug=slugify(form.name.data),
+            price=form.price.data,
+            description=form.description.data,
+            image=form.image.data,
             link=form.link.data,
-            subcategoria_id=selected_subcategoria_id,
+            subcategory_id=selected_subcategory_id,
             external_id=external_id_value
         )
         try:
             db.session.add(new_product)
             db.session.commit()
-            flash('Producto añadido exitosamente!', 'success')
+            flash('Product added successfully!', 'success')
             return redirect(url_for('admin.admin_products'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un producto con el mismo nombre o ID externo.', 'danger')
+            flash('Error: A product with this name or external ID already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir producto: {e}', 'danger')
+            flash(f'Error adding product: {e}', 'danger')
     return render_template('admin/admin_add_edit_product.html', form=form)
 
 @bp.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_product(product_id):
+    """Edits an existing product."""
     product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
 
     if form.validate_on_submit():
-        selected_subcategoria = form.subcategoria.data
-        product.subcategoria_id = selected_subcategoria.id if selected_subcategoria else None
+        selected_subcategory = form.subcategory.data
+        product.subcategory_id = selected_subcategory.id if selected_subcategory else None
 
         external_id_value = form.external_id.data.strip()
-        if external_id_value == '':
+        if not external_id_value:
             external_id_value = None
 
         form.populate_obj(product)
-        product.slug = slugify(product.nombre)
+        product.slug = slugify(product.name)
         product.external_id = external_id_value
-        product.fecha_actualizacion = datetime.now(timezone.utc)
+        product.updated_at = datetime.now(timezone.utc)
 
         try:
             db.session.commit()
-            flash('Producto actualizado exitosamente!', 'success')
+            flash('Product updated successfully!', 'success')
             return redirect(url_for('admin.admin_products'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un producto con el mismo nombre o ID externo.', 'danger')
+            flash('Error: A product with this name or external ID already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar producto: {e}', 'danger')
+            flash(f'Error updating product: {e}', 'danger')
     return render_template('admin/admin_add_edit_product.html', form=form, product=product)
 
 @bp.route('/products/delete/<int:product_id>', methods=['POST'])
 @admin_required
 def admin_delete_product(product_id):
+    """Deletes a product."""
     product = Product.query.get_or_404(product_id)
     try:
         db.session.delete(product)
         db.session.commit()
-        flash('Producto eliminado exitosamente!', 'success')
+        flash('Product deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar producto: {e}', 'danger')
+        flash(f'Error deleting product: {e}', 'danger')
     return redirect(url_for('admin.admin_products'))
 
-# --- Admin Categories Management ---
+
+
+# --- Category Management ---
 @bp.route('/categories')
 @admin_required
 def admin_categories():
-    categorias = Category.query.options(joinedload(Category.subcategories)).all()
-    return render_template('admin/admin_categories.html', categorias=categorias)
+    """Displays a list of all categories and subcategories."""
+    categories = Category.query.options(joinedload(Category.subcategories)).all()
+    return render_template('admin/admin_categories.html', categories=categories)
 
 @bp.route('/categories/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_category():
+    """Adds a new category."""
     form = CategoryForm()
     if form.validate_on_submit():
-        existing_category = Category.query.filter_by(slug=slugify(form.nombre.data)).first()
+        existing_category = Category.query.filter_by(slug=slugify(form.name.data)).first()
         if existing_category:
-            flash('Error: Ya existe una categoría con ese nombre (o un slug similar).', 'danger')
-            return render_template('admin/admin_add_edit_category.html', category_form=form)
+            flash('Error: A category with this name (or a similar slug) already exists.', 'danger')
+            return render_template('admin/admin_add_edit_category.html', form=form)
 
-        new_category = Category(nombre=form.nombre.data, slug=slugify(form.nombre.data))
+        new_category = Category(name=form.name.data, slug=slugify(form.name.data))
         try:
             db.session.add(new_category)
             db.session.commit()
-            flash('Categoría añadida exitosamente!', 'success')
+            flash('Category added successfully!', 'success')
             return redirect(url_for('admin.admin_categories'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe una categoría con ese nombre o slug.', 'danger')
+            flash('Error: A category with this name or slug already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir categoría: {e}', 'danger')
-
-    return render_template('admin/admin_add_edit_category.html', category_form=form)
+            flash(f'Error adding category: {e}', 'danger')
+    return render_template('admin/admin_add_edit_category.html', form=form)
 
 @bp.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_category(category_id):
+    """Edits an existing category."""
     category = Category.query.get_or_404(category_id)
     form = CategoryForm(obj=category)
     if form.validate_on_submit():
         form.populate_obj(category)
-        category.slug = slugify(category.nombre)
+        category.slug = slugify(category.name)
         try:
             db.session.commit()
-            flash('Categoría actualizada exitosamente!', 'success')
+            flash('Category updated successfully!', 'success')
             return redirect(url_for('admin.admin_categories'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe una categoría con ese nombre.', 'danger')
+            flash('Error: A category with this name already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar categoría: {e}', 'danger')
+            flash(f'Error updating category: {e}', 'danger')
     return render_template('admin/admin_add_edit_category.html', form=form, category=category)
 
 @bp.route('/categories/delete/<int:category_id>', methods=['POST'])
 @admin_required
 def admin_delete_category(category_id):
+    """Deletes a category and its subcategories/products."""
     category = Category.query.get_or_404(category_id)
     try:
         db.session.delete(category)
         db.session.commit()
-        flash('Categoría eliminada exitosamente!', 'success')
+        flash('Category deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar categoría: {e}', 'danger')
+        flash(f'Error deleting category: {e}', 'danger')
     return redirect(url_for('admin.admin_categories'))
 
+# --- Subcategory Management ---
 @bp.route('/categories/<int:category_id>/add_subcategory', methods=['GET', 'POST'])
 @admin_required
 def admin_add_subcategory(category_id):
+    """Adds a new subcategory to a specific category."""
     category = Category.query.get_or_404(category_id)
     form = SubCategoryForm()
     if form.validate_on_submit():
-        new_slug = slugify(form.nombre.data)
+        new_slug = slugify(form.name.data)
         existing_subcategory = Subcategory.query.filter_by(slug=new_slug, category_id=category.id).first()
         if existing_subcategory:
-            flash(f'Error: Ya existe una subcategoría con el nombre "{form.nombre.data}" en esta categoría. Por favor, elige un nombre diferente.', 'danger')
+            flash(f'Error: A subcategory named "{form.name.data}" already exists in this category. Please choose a different name.', 'danger')
             return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category)
 
-        new_subcategory = Subcategory(nombre=form.nombre.data, slug=new_slug, category_id=category.id)
+        new_subcategory = Subcategory(name=form.name.data, slug=new_slug, category_id=category.id)
         try:
             db.session.add(new_subcategory)
             db.session.commit()
-            flash('Subcategoría añadida exitosamente!', 'success')
+            flash('Subcategory added successfully!', 'success')
             return redirect(url_for('admin.admin_categories'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe una subcategoría con ese nombre.', 'danger')
+            flash('Error: A subcategory with this name already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir subcategoría: {e}', 'danger')
+            flash(f'Error adding subcategory: {e}', 'danger')
     return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category)
 
 @bp.route('/categories/<int:category_id>/edit_subcategory/<int:subcategory_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_subcategory(category_id, subcategory_id):
+    """Edits an existing subcategory."""
     category = Category.query.get_or_404(category_id)
     subcategory = Subcategory.query.filter_by(id=subcategory_id, category_id=category_id).first_or_404()
     form = SubCategoryForm(obj=subcategory)
     if form.validate_on_submit():
         form.populate_obj(subcategory)
-        subcategory.slug = slugify(subcategory.nombre)
+        subcategory.slug = slugify(subcategory.name)
         try:
             db.session.commit()
-            flash('Subcategoría actualizada exitosamente!', 'success')
+            flash('Subcategory updated successfully!', 'success')
             return redirect(url_for('admin.admin_categories'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe una subcategoría con ese nombre.', 'danger')
+            flash('Error: A subcategory with this name already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar subcategoría: {e}', 'danger')
+            flash(f'Error updating subcategory: {e}', 'danger')
     return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category, subcategory=subcategory)
 
 @bp.route('/categories/<int:category_id>/delete_subcategory/<int:subcategory_id>', methods=['POST'])
 @admin_required
 def admin_delete_subcategory(category_id, subcategory_id):
+    """Deletes a subcategory."""
     subcategory = Subcategory.query.filter_by(id=subcategory_id, category_id=category_id).first_or_404()
     try:
         db.session.delete(subcategory)
         db.session.commit()
-        flash('Subcategoría eliminada exitosamente!', 'success')
+        flash('Subcategory deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar subcategoría: {e}', 'danger')
+        flash(f'Error deleting subcategory: {e}', 'danger')
     return redirect(url_for('admin.admin_categories'))
 
-# --- Admin Articles (Guias) Management ---
+
+
+# --- Article Management ---
 @bp.route('/articles')
 @admin_required
 def admin_articles():
-    articulos = Article.query.order_by(Article.fecha.desc()).all()
-    return render_template('admin/admin_articles.html', articulos=articulos)
+    """Displays a list of all articles."""
+    articles = Article.query.order_by(Article.date.desc()).all()
+    return render_template('admin/admin_articles.html', articles=articles)
 
 @bp.route('/articles/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_article():
+    """Adds a new article."""
     form = ArticleForm()
     if form.validate_on_submit():
         new_article = Article(
-            titulo=form.titulo.data,
-            slug=slugify(form.titulo.data),
-            contenido=form.contenido.data,
-            autor=form.autor.data,
-            fecha=datetime.now(timezone.utc),
-            imagen=form.imagen.data
+            title=form.title.data,
+            slug=slugify(form.title.data),
+            content=form.content.data,
+            author=form.author.data,
+            date=datetime.now(timezone.utc),
+            image=form.image.data
         )
         try:
             db.session.add(new_article)
             db.session.commit()
-            flash('Artículo añadido exitosamente!', 'success')
+            flash('Article added successfully!', 'success')
             return redirect(url_for('admin.admin_articles'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un artículo con ese título.', 'danger')
+            flash('Error: An article with this title already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir artículo: {e}', 'danger')
+            flash(f'Error adding article: {e}', 'danger')
     return render_template('admin/admin_add_edit_article.html', form=form)
 
 @bp.route('/articles/edit/<int:article_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_article(article_id):
+    """Edits an existing article."""
     article = Article.query.get_or_404(article_id)
     form = ArticleForm(obj=article)
     if form.validate_on_submit():
         form.populate_obj(article)
-        article.slug = slugify(article.titulo)
+        article.slug = slugify(article.title)
         try:
             db.session.commit()
-            flash('Artículo actualizado exitosamente!', 'success')
+            flash('Article updated successfully!', 'success')
             return redirect(url_for('admin.admin_articles'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un artículo con ese título.', 'danger')
+            flash('Error: An article with this title already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar artículo: {e}', 'danger')
+            flash(f'Error updating article: {e}', 'danger')
     return render_template('admin/admin_add_edit_article.html', form=form, article=article)
 
 @bp.route('/articles/delete/<int:article_id>', methods=['POST'])
 @admin_required
 def admin_delete_article(article_id):
+    """Deletes an article."""
     article = Article.query.get_or_404(article_id)
     try:
         db.session.delete(article)
         db.session.commit()
-        flash('Artículo eliminado exitosamente!', 'success')
+        flash('Article deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar artículo: {e}', 'danger')
+        flash(f'Error deleting article: {e}', 'danger')
     return redirect(url_for('admin.admin_articles'))
 
-# --- Admin API Products Sync ---
+
+
+# --- API Synchronization ---
 @bp.route('/api_products')
 @admin_required
 def admin_api_products():
+    """Displays the API synchronization status."""
     sync_info = SyncInfo.query.first()
     if not sync_info:
-        sync_info = SyncInfo(last_sync_time="N/A", last_sync_count=0, last_synced_api_url="N/A")
+        sync_info = SyncInfo(last_sync_time=datetime.now(timezone.utc), last_sync_count=0, last_synced_api_url="N/A")
         db.session.add(sync_info)
         db.session.commit()
     form = ApiSyncForm()
     return render_template('admin/admin_api_products.html',
-                            last_sync_time=sync_info.last_sync_time,
-                            last_sync_count=sync_info.last_sync_count,
-                            last_synced_api_url=sync_info.last_synced_api_url,
-                            form=form)
+                           last_sync_time=sync_info.last_sync_time,
+                           last_sync_count=sync_info.last_sync_count,
+                           last_synced_api_url=sync_info.last_synced_api_url,
+                           form=form)
 
 @bp.route('/api_products/sync', methods=['POST'])
 @admin_required
 def admin_sync_api_products():
+    """Triggers the API product synchronization."""
     form = ApiSyncForm()
     if form.validate_on_submit():
         api_url = form.api_url.data
-        sync_info = SyncInfo.query.first()
-        if not sync_info:
-            sync_info = SyncInfo(last_sync_time="N/A", last_sync_count=0, last_synced_api_url="N/A")
-            db.session.add(sync_info)
-            db.session.commit()
-
         try:
             updated_count = fetch_and_update_products_from_external_api(api_url)
-
-            sync_info.last_sync_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-            sync_info.last_sync_count = updated_count
-            sync_info.last_synced_api_url = api_url
+            sync_info = SyncInfo.query.first()
+            if not sync_info:
+                sync_info = SyncInfo(last_sync_time=datetime.now(timezone.utc), last_sync_count=updated_count, last_synced_api_url=api_url)
+                db.session.add(sync_info)
+            else:
+                sync_info.last_sync_time = datetime.now(timezone.utc)
+                sync_info.last_sync_count = updated_count
+                sync_info.last_synced_api_url = api_url
             db.session.commit()
-
-            flash(f'Sincronización API completada. Se actualizaron/añadieron {updated_count} productos.', 'success')
+            flash(f'API sync complete. {updated_count} products were updated/added.', 'success')
         except Exception as e:
-            flash(f'Error durante la sincronización API. Detalles: {str(e)}', 'danger')
+            flash(f'Error during API sync: {str(e)}', 'danger')
             db.session.rollback()
     else:
         for field, errors in form.errors.items():
             for error in errors:
-                flash(f"Error en {getattr(form, field).label.text}: {error}", 'danger')
+                flash(f"Error in {getattr(form, field).label.text}: {error}", 'danger')
     return redirect(url_for('admin.admin_api_products'))
 
-# Helper dictionary to map platform names to Font Awesome icon classes
+
+
+# --- Social Media Links Management ---
 PLATFORM_ICONS = {
     'Facebook': 'fab fa-facebook-f',
     'Twitter': 'fab fa-x-twitter',
@@ -445,21 +460,21 @@ PLATFORM_ICONS = {
     'Reddit': 'fab fa-reddit-alien',
 }
 
-# --- Admin Social Media Management ---
 @bp.route('/social_media')
 @admin_required
 def admin_social_media():
+    """Displays all social media links."""
     social_media_links = SocialMediaLink.query.order_by(SocialMediaLink.order_num).all()
     return render_template('admin/admin_social_media.html', social_media_links=social_media_links)
 
 @bp.route('/social_media/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_social_media():
+    """Adds a new social media link."""
     form = SocialMediaForm()
     if form.validate_on_submit():
         platform_name = form.platform.data
         icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
-
         new_link = SocialMediaLink(
             platform=platform_name,
             url=form.url.data,
@@ -474,39 +489,39 @@ def admin_add_social_media():
             return redirect(url_for('admin.admin_social_media'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un enlace para esta plataforma.', 'danger')
+            flash('Error: A link for this platform already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir enlace: {e}', 'danger')
+            flash(f'Error adding link: {e}', 'danger')
     return render_template('admin/admin_add_edit_social_media.html', form=form)
 
 @bp.route('/social_media/edit/<int:link_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_social_media(link_id):
+    """Edits an existing social media link."""
     link = SocialMediaLink.query.get_or_404(link_id)
     form = SocialMediaForm(obj=link)
 
     if form.validate_on_submit():
         platform_name = form.platform.data
-        icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
-
+        link.icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
         form.populate_obj(link)
-        link.icon_class = icon_class
         try:
             db.session.commit()
             flash('Social media link updated successfully!', 'success')
             return redirect(url_for('admin.admin_social_media'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un enlace para esta plataforma.', 'danger')
+            flash('Error: A link for this platform already exists.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar enlace: {e}', 'danger')
+            flash(f'Error updating link: {e}', 'danger')
     return render_template('admin/admin_add_edit_social_media.html', form=form, link=link)
 
 @bp.route('/social_media/delete/<int:link_id>', methods=['POST'])
 @admin_required
 def admin_delete_social_media(link_id):
+    """Deletes a social media link."""
     link = SocialMediaLink.query.get_or_404(link_id)
     try:
         db.session.delete(link)
@@ -514,20 +529,23 @@ def admin_delete_social_media(link_id):
         flash('Social media link deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar enlace: {e}', 'danger')
+        flash(f'Error deleting link: {e}', 'danger')
     return redirect(url_for('admin.admin_social_media'))
 
 
-# --- Admin Contact Messages Management ---
+
+# --- Contact Messages Management ---
 @bp.route('/messages')
 @admin_required
 def admin_messages():
+    """Displays all contact messages."""
     messages = ContactMessage.query.order_by(ContactMessage.timestamp.desc()).all()
     return render_template('admin/admin_messages.html', messages=messages)
 
 @bp.route('/messages/view/<int:message_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_view_message(message_id):
+    """Views and manages a single contact message."""
     message = ContactMessage.query.get_or_404(message_id)
     form = ContactMessageAdminForm(obj=message)
 
@@ -537,7 +555,7 @@ def admin_view_message(message_id):
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al marcar mensaje como leído: {e}', 'danger')
+            flash(f'Error marking message as read: {e}', 'danger')
 
     if form.validate_on_submit():
         message.is_read = form.is_read.data
@@ -552,92 +570,57 @@ def admin_view_message(message_id):
 
         try:
             db.session.commit()
-            flash('Mensaje actualizado exitosamente!', 'success')
+            flash('Message updated successfully!', 'success')
             return redirect(url_for('admin.admin_messages'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar mensaje: {e}', 'danger')
-
+            flash(f'Error updating message: {e}', 'danger')
+    
     return render_template('admin/admin_view_message.html', message=message, form=form)
 
 @bp.route('/messages/delete/<int:message_id>', methods=['POST'])
 @admin_required
 def admin_delete_message(message_id):
+    """Deletes a contact message permanently."""
     message = ContactMessage.query.get_or_404(message_id)
     try:
         db.session.delete(message)
         db.session.commit()
-        flash('Mensaje eliminado permanentemente.', 'success')
+        flash('Message permanently deleted.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar mensaje: {e}', 'danger')
+        flash(f'Error deleting message: {e}', 'danger')
     return redirect(url_for('admin.admin_messages'))
 
 @bp.route('/messages/toggle_archive/<int:message_id>', methods=['POST'])
 @admin_required
 def admin_toggle_archive_message(message_id):
+    """Toggles the archived status of a message."""
     message = ContactMessage.query.get_or_404(message_id)
     message.is_archived = not message.is_archived
     try:
         db.session.commit()
-        status = "archivado" if message.is_archived else "desarchivado"
-        flash(f'Mensaje {status} exitosamente.', 'info')
+        status = "archived" if message.is_archived else "unarchived"
+        flash(f'Message successfully {status}.', 'info')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al actualizar estado de archivo: {e}', 'danger')
+        flash(f'Error updating archive status: {e}', 'danger')
     return redirect(url_for('admin.admin_messages'))
 
-@bp.route('/messages/toggle_read/<int:message_id>', methods=['POST'])
-@admin_required
-def admin_toggle_read_message(message_id):
-    message = ContactMessage.query.get_or_404(message_id)
-    message.is_read = not message.is_read
-    try:
-        db.session.commit()
-        status = "leído" if message.is_read else "no leído"
-        flash(f'Mensaje marcado como {status} exitosamente.', 'info')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al actualizar estado de lectura: {e}', 'danger')
-    return redirect(url_for('admin.admin_messages'))
-
-@bp.route('/messages/like/<int:message_id>', methods=['POST'])
-@admin_required
-def admin_like_message(message_id):
-    message = ContactMessage.query.get_or_404(message_id)
-    message.likes += 1
-    try:
-        db.session.commit()
-        flash('Me gusta añadido al mensaje.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al añadir me gusta: {e}', 'danger')
-    return redirect(url_for('admin.admin_view_message', message_id=message_id))
-
-@bp.route('/messages/dislike/<int:message_id>', methods=['POST'])
-@admin_required
-def admin_dislike_message(message_id):
-    message = ContactMessage.query.get_or_404(message_id)
-    message.dislikes += 1
-    try:
-        db.session.commit()
-        flash('No me gusta añadido al mensaje.', 'warning')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al añadir no me gusta: {e}', 'danger')
-    return redirect(url_for('admin.admin_view_message', message_id=message_id))
 
 
-# --- Admin Testimonials Management ---
+# --- Testimonial Management ---
 @bp.route('/testimonials')
 @admin_required
 def admin_testimonials():
+    """Displays all testimonials."""
     testimonials = Testimonial.query.order_by(Testimonial.date_posted.desc()).all()
     return render_template('admin/admin_testimonials.html', testimonials=testimonials)
 
 @bp.route('/testimonials/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_testimonial():
+    """Adds a new testimonial."""
     form = TestimonialForm()
     if form.validate_on_submit():
         new_testimonial = Testimonial(
@@ -649,99 +632,74 @@ def admin_add_testimonial():
         try:
             db.session.add(new_testimonial)
             db.session.commit()
-            flash('Testimonio añadido exitosamente!', 'success')
+            flash('Testimonial added successfully!', 'success')
             return redirect(url_for('admin.admin_testimonials'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir testimonio: {e}', 'danger')
+            flash(f'Error adding testimonial: {e}', 'danger')
     return render_template('admin/admin_add_edit_testimonial.html', form=form)
 
 @bp.route('/testimonials/edit/<int:testimonial_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_testimonial(testimonial_id):
+    """Edits an existing testimonial."""
     testimonial = Testimonial.query.get_or_404(testimonial_id)
     form = TestimonialForm(obj=testimonial)
-
-    if request.method == 'GET':
-        form.likes.data = testimonial.likes
-        form.dislikes.data = testimonial.dislikes
 
     if form.validate_on_submit():
         form.populate_obj(testimonial)
         try:
             db.session.commit()
-            flash('Testimonio actualizado exitosamente!', 'success')
+            flash('Testimonial updated successfully!', 'success')
             return redirect(url_for('admin.admin_testimonials'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar testimonio: {e}', 'danger')
+            flash(f'Error updating testimonial: {e}', 'danger')
     return render_template('admin/admin_add_edit_testimonial.html', form=form, testimonial=testimonial)
 
 @bp.route('/testimonials/delete/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_delete_testimonial(testimonial_id):
+    """Deletes a testimonial."""
     testimonial = Testimonial.query.get_or_404(testimonial_id)
     try:
         db.session.delete(testimonial)
         db.session.commit()
-        flash('Testimonio eliminado permanentemente.', 'success')
+        flash('Testimonial deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar testimonio: {e}', 'danger')
+        flash(f'Error deleting testimonial: {e}', 'danger')
     return redirect(url_for('admin.admin_testimonials'))
 
 @bp.route('/testimonials/toggle_visibility/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_toggle_visibility_testimonial(testimonial_id):
+    """Toggles the visibility of a testimonial."""
     testimonial = Testimonial.query.get_or_404(testimonial_id)
     testimonial.is_visible = not testimonial.is_visible
     try:
         db.session.commit()
-        status = "visible" if testimonial.is_visible else "oculto"
-        flash(f'Testimonio marcado como {status} exitosamente.', 'info')
+        status = "visible" if testimonial.is_visible else "hidden"
+        flash(f'Testimonial marked as {status}.', 'info')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al actualizar estado de visibilidad: {e}', 'danger')
-    return redirect(url_for('admin.admin_testimonials'))
-
-# --- NEW ROUTES FOR TESTIMONIAL LIKES/DISLIKES ---
-@bp.route('/testimonials/like/<int:testimonial_id>', methods=['POST'])
-@admin_required
-def admin_like_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
-    testimonial.likes += 1
-    try:
-        db.session.commit()
-        flash(f'Me gusta añadido al testimonio de "{testimonial.author}".', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al añadir me gusta al testimonio: {e}', 'danger')
-    return redirect(url_for('admin.admin_testimonials'))
-
-@bp.route('/testimonials/dislike/<int:testimonial_id>', methods=['POST'])
-@admin_required
-def admin_dislike_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
-    testimonial.dislikes += 1
-    try:
-        db.session.commit()
-        flash(f'No me gusta añadido al testimonio de "{testimonial.author}".', 'warning')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al añadir no me gusta al testimonio: {e}', 'danger')
+        flash(f'Error updating visibility status: {e}', 'danger')
     return redirect(url_for('admin.admin_testimonials'))
 
 
-# --- Admin Advertisements Management ---
+
+# --- Advertisement Management ---
 @bp.route('/advertisements')
 @admin_required
 def admin_advertisements():
+    """Displays a list of all advertisements."""
     advertisements = Advertisement.query.options(joinedload(Advertisement.product)).all()
     return render_template('admin/admin_advertisements.html', advertisements=advertisements)
 
 @bp.route('/advertisements/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_advertisement():
+    """Adds a new advertisement."""
     form = AdvertisementForm()
     if form.validate_on_submit():
         new_advertisement = Advertisement(
@@ -761,175 +719,180 @@ def admin_add_advertisement():
         try:
             db.session.add(new_advertisement)
             db.session.commit()
-            flash('Anuncio añadido exitosamente!', 'success')
+            flash('Advertisement added successfully!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir anuncio: {e}', 'danger')
+            flash(f'Error adding advertisement: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form)
-
 
 @bp.route('/advertisements/edit/<int:advertisement_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_advertisement(advertisement_id):
+    """Edits an existing advertisement."""
     advertisement = Advertisement.query.get_or_404(advertisement_id)
     form = AdvertisementForm(obj=advertisement)
-
     if form.validate_on_submit():
         form.populate_obj(advertisement)
         advertisement.product_id = form.product.data.id if form.product.data else None
-        
         try:
             db.session.commit()
-            flash('Anuncio actualizado exitosamente!', 'success')
+            flash('Advertisement updated successfully!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar anuncio: {e}', 'danger')
+            flash(f'Error updating advertisement: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form, advertisement=advertisement)
 
 @bp.route('/advertisements/delete/<int:advertisement_id>', methods=['POST'])
 @admin_required
 def admin_delete_advertisement(advertisement_id):
+    """Deletes an advertisement."""
     advertisement = Advertisement.query.get_or_404(advertisement_id)
     try:
         db.session.delete(advertisement)
         db.session.commit()
-        flash('Anuncio eliminado exitosamente!', 'success')
+        flash('Advertisement deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar anuncio: {e}', 'danger')
+        flash(f'Error deleting advertisement: {e}', 'danger')
     return redirect(url_for('admin.admin_advertisements'))
 
-# --- Admin Affiliates Management ---
+
+# --- Affiliate Management ---
 @bp.route('/affiliates')
 @admin_required
 def admin_affiliates():
-    affiliates = Afiliado.query.all()
+    """Displays a list of all affiliates."""
+    affiliates = Affiliate.query.all()
     return render_template('admin/admin_affiliates.html', affiliates=affiliates)
 
 @bp.route('/affiliates/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_affiliate():
+    """Adds a new affiliate."""
     form = AffiliateForm()
     if form.validate_on_submit():
-        new_affiliate = Afiliado(
-            nombre=form.nombre.data,
-            codigo=form.codigo.data,
-            comision=form.comision.data,
+        new_affiliate = Affiliate(
+            name=form.name.data,
+            referral_link=form.referral_link.data,
             email=form.email.data
         )
         try:
             db.session.add(new_affiliate)
             db.session.commit()
-            flash('Afiliado añadido exitosamente!', 'success')
+            flash('Affiliate added successfully!', 'success')
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese código o email.', 'danger')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error al añadir afiliado: {e}', 'danger')
+            flash('Error: An affiliate with this email or referral link already exists.', 'danger')
     return render_template('admin/admin_add_edit_affiliate.html', form=form)
 
 @bp.route('/affiliates/edit/<int:affiliate_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_affiliate(affiliate_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    """Edits an existing affiliate."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     form = AffiliateForm(obj=affiliate)
     if form.validate_on_submit():
         form.populate_obj(affiliate)
         try:
             db.session.commit()
-            flash('Afiliado actualizado exitosamente!', 'success')
+            flash('Affiliate updated successfully!', 'success')
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese código o email.', 'danger')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error al actualizar afiliado: {e}', 'danger')
+            flash('Error: An affiliate with this email or referral link already exists.', 'danger')
     return render_template('admin/admin_add_edit_affiliate.html', form=form, affiliate=affiliate)
 
 @bp.route('/affiliates/delete/<int:affiliate_id>', methods=['POST'])
 @admin_required
 def admin_delete_affiliate(affiliate_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    """Deletes an affiliate."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     try:
         db.session.delete(affiliate)
         db.session.commit()
-        flash('Afiliado eliminado exitosamente!', 'success')
+        flash('Affiliate deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar afiliado: {e}', 'danger')
+        flash(f'Error deleting affiliate: {e}', 'danger')
     return redirect(url_for('admin.admin_affiliates'))
 
-# --- Admin Affiliate Statistics Management ---
+# --- Affiliate Statistics Management ---
 @bp.route('/affiliates/<int:affiliate_id>/statistics')
 @admin_required
 def admin_affiliate_statistics(affiliate_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
-    statistics = EstadisticaAfiliado.query.filter_by(afiliado_id=affiliate_id).order_by(EstadisticaAfiliado.fecha.desc()).all()
+    """Displays statistics for a specific affiliate."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    statistics = AffiliateStatistic.query.filter_by(affiliate_id=affiliate_id).order_by(AffiliateStatistic.date.desc()).all()
     return render_template('admin/admin_affiliate_statistics.html', affiliate=affiliate, statistics=statistics)
 
 @bp.route('/affiliates/<int:affiliate_id>/statistics/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_affiliate_statistic(affiliate_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    """Adds a new statistic entry for an affiliate."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     form = AffiliateStatisticForm()
     if form.validate_on_submit():
-        new_statistic = EstadisticaAfiliado(
-            afiliado_id=affiliate.id,
-            fecha=form.fecha.data,
-            ventas=form.ventas.data,
-            clics=form.clics.data,
-            ganancias=form.ganancias.data
+        new_statistic = AffiliateStatistic(
+            affiliate_id=affiliate.id,
+            date=form.date.data,
+            clicks=form.clicks.data,
+            registrations=form.registrations.data,
+            sales=form.sales.data,
+            commission_generated=form.commission_generated.data
         )
         try:
             db.session.add(new_statistic)
             db.session.commit()
-            flash('Estadística de afiliado añadida exitosamente!', 'success')
+            flash('Affiliate statistic added successfully!', 'success')
             return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir estadística: {e}', 'danger')
+            flash(f'Error adding statistic: {e}', 'danger')
     return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate)
 
 @bp.route('/affiliates/<int:affiliate_id>/statistics/edit/<int:statistic_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_affiliate_statistic(affiliate_id, statistic_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
-    statistic = EstadisticaAfiliado.query.filter_by(id=statistic_id, afiliado_id=affiliate_id).first_or_404()
+    """Edits an existing affiliate statistic entry."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    statistic = AffiliateStatistic.query.filter_by(id=statistic_id, affiliate_id=affiliate_id).first_or_404()
     form = AffiliateStatisticForm(obj=statistic)
     if form.validate_on_submit():
         form.populate_obj(statistic)
         try:
             db.session.commit()
-            flash('Estadística de afiliado actualizada exitosamente!', 'success')
+            flash('Affiliate statistic updated successfully!', 'success')
             return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar estadística: {e}', 'danger')
+            flash(f'Error updating statistic: {e}', 'danger')
     return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate, statistic=statistic)
 
 @bp.route('/affiliates/<int:affiliate_id>/statistics/delete/<int:statistic_id>', methods=['POST'])
 @admin_required
 def admin_delete_affiliate_statistic(affiliate_id, statistic_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
-    statistic = EstadisticaAfiliado.query.filter_by(id=statistic_id, afiliado_id=affiliate_id).first_or_404()
+    """Deletes an affiliate statistic entry."""
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    statistic = AffiliateStatistic.query.filter_by(id=statistic_id, affiliate_id=affiliate_id).first_or_404()
     try:
         db.session.delete(statistic)
         db.session.commit()
-        flash('Estadística de afiliado eliminada exitosamente!', 'success')
+        flash('Affiliate statistic deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al eliminar estadística: {e}', 'danger')
+        flash(f'Error deleting statistic: {e}', 'danger')
     return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
 
-# --- Admin Adsense Config Management ---
+
+
+# --- AdSense Configuration Management ---
 @bp.route('/adsense_config')
 @admin_required
 def admin_adsense_config():
+    """Displays the AdSense configuration."""
     config = AdsenseConfig.query.first()
     form = AdsenseConfigForm(obj=config)
     return render_template('admin/admin_adsense_config.html', form=form, config=config)
@@ -937,23 +900,24 @@ def admin_adsense_config():
 @bp.route('/adsense_config/save', methods=['POST'])
 @admin_required
 def admin_save_adsense_config():
+    """Saves the AdSense configuration."""
     config = AdsenseConfig.query.first()
     if not config:
         config = AdsenseConfig()
         db.session.add(config)
-        
+    
     form = AdsenseConfigForm(obj=config)
     if form.validate_on_submit():
         form.populate_obj(config)
         try:
             db.session.commit()
-            flash('Configuración de AdSense guardada exitosamente!', 'success')
+            flash('AdSense configuration saved successfully!', 'success')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al guardar la configuración de AdSense: {e}', 'danger')
+            flash(f'Error saving AdSense configuration: {e}', 'danger')
     else:
         for field, errors in form.errors.items():
             for error in errors:
-                flash(f"Error en {getattr(form, field).label.text}: {error}", 'danger')
+                flash(f"Error in {getattr(form, field).label.text}: {error}", 'danger')
     
     return redirect(url_for('admin.admin_adsense_config'))

@@ -5,7 +5,7 @@ import click
 from datetime import datetime, timezone, date
 
 # Importaciones de terceros
-from flask import Flask
+from flask import Flask, render_template
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
@@ -38,8 +38,6 @@ def get_application_locale():
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
     # Inyecta enlaces de redes sociales en el contexto de Jinja2
-    # El código fallaba aquí porque la columna 'order_num' no existía
-    # en la base de datos. Se soluciona forzando la creación de la tabla.
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
@@ -70,7 +68,6 @@ def create_app():
     # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        # db.drop_all()  # ADVERTENCIA: Esta línea borra todos los datos.
         db.create_all() # ADVERTENCIA: Esta línea crea tablas, pero es mejor usar migraciones.
     
     # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
@@ -239,7 +236,15 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
-
+    
+    # -------------------- RUTA DE INICIO PÚBLICA --------------------
+    # CORRECCIÓN: Se actualiza la ruta de inicio para limitar a 12 productos
+    @public_bp.route('/')
+    @public_bp.route('/index')
+    def index():
+        productos = Producto.query.order_by(Producto.id.desc()).limit(12).all()
+        testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
+        return render_template('public/index.html', productos=productos, testimonios=testimonios)
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app
 

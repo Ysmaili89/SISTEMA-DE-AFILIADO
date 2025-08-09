@@ -1,5 +1,3 @@
-{% extends 'base.html' %}
-
 {% block title %}Inicio - Afiliados Online{% endblock %}
 
 {% block meta_description %}
@@ -19,34 +17,23 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
 <section class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
   {% for p in productos %}
   <div class="col d-flex">
-    <div class="card h-100 shadow-sm rounded-3 overflow-hidden d-flex flex-column border-0 transition-card">
+    <div class="card h-100 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
       <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" aria-label="Ver más sobre {{ p.nombre }}">
-        <div class="image-container ratio ratio-1x1 bg-light">
-          <img src="{{ p.imagen }}" 
-               class="card-img-top img-fluid object-fit-cover" 
-               alt="Imagen del producto {{ p.nombre }}" 
-               width="300" height="300"
-               loading="lazy">
+        <div class="image-container">
+          <img src="{{ p.imagen }}" class="card-img-top img-fluid" alt="{{ p.nombre }}" loading="lazy">
         </div>
       </a>
-      <div class="card-body d-flex flex-column p-3">
-        <h3 class="card-title h6 fw-bold product-title" title="{{ p.nombre }}">
-          <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" 
-             class="text-decoration-none text-dark stretched-link">
+      <div class="card-body d-flex flex-column">
+        <h3 class="card-title h6 mb-2 fw-bold" title="{{ p.nombre }}">
+          <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" class="text-decoration-none text-dark stretched-link">
             {{ p.nombre }}
           </a>
         </h3>
         <div class="mt-auto d-grid gap-2">
-          <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" 
-             class="btn btn-outline-primary btn-sm" 
-             aria-label="Ver detalles de {{ p.nombre }}">
+          <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" class="btn btn-outline-primary btn-sm" aria-label="Ver detalles de {{ p.nombre }}">
             <i class="fas fa-info-circle me-1"></i> Ver más
           </a>
-          <a href="{{ p.link }}" 
-             class="btn btn-success btn-sm" 
-             target="_blank" 
-             rel="sponsored noopener nofollow" 
-             aria-label="Comprar {{ p.nombre }} ahora">
+          <a href="{{ p.link }}" class="btn btn-success btn-sm" target="_blank" rel="sponsored noopener nofollow" aria-label="Comprar {{ p.nombre }} ahora">
             <i class="fas fa-shopping-cart me-1"></i> Comprar
           </a>
         </div>
@@ -62,7 +49,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   {% endfor %}
 </section>
 
-<section class="my-5 text-center py-5 bg-light rounded-3 shadow-sm container">
+<section class="my-5 text-center py-5 bg-light rounded-3 shadow-sm">
   <h2 class="mb-3 display-6 fw-bold">¿Por qué confiar en nosotros?</h2>
   <p class="mb-4 lead px-md-5">Nuestro equipo analiza, compara y selecciona productos de forma imparcial para que tomes decisiones informadas con confianza.</p>
   <a href="{{ url_for('publico.acerca_de') }}" class="btn btn-info btn-lg px-4" role="button">
@@ -76,7 +63,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for t in testimonios %}
     <div class="col d-flex">
-      <div class="card h-100 shadow-sm border-0 rounded-3 transition-card">
+      <div class="card h-100 shadow-sm border-0 rounded-3">
         <div class="card-body d-flex flex-column">
           <div class="text-warning mb-2">
             <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
@@ -92,38 +79,4 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   </div>
 </section>
 {% endif %}
-
-<style>
-/* Efecto hover en tarjetas */
-.transition-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.transition-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,0.1);
-}
-
-/* Imágenes recortadas uniformemente */
-.object-fit-cover {
-  object-fit: cover;
-}
-
-/* Títulos alineados y limitados a 2 líneas */
-.product-title {
-  min-height: 3rem; /* Obliga a que todos los títulos ocupen al menos la misma altura */
-  display: -webkit-box; /* Necesario para que funcione el "line clamp" */
-  -webkit-box-orient: vertical; /* Orienta el recorte en vertical */
-  overflow: hidden; /* Oculta el texto sobrante que pasa del límite */
-}
-
-
-/* Asegurar que botones queden abajo */
-.card-body {
-  display: flex;
-  flex-direction: column;
-}
-.card-body .mt-auto {
-  margin-top: auto;
-}
-</style>
 {% endblock %}

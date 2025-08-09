@@ -1,5 +1,3 @@
-# forms.py
-
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, FloatField, SelectField,
@@ -9,8 +7,10 @@ from wtforms.validators import (
     DataRequired, URL, NumberRange, Optional, Length, ValidationError, Email
 )
 from wtforms_sqlalchemy.fields import QuerySelectField
-from models import Producto, Afiliado, Categoria, Subcategoria
-
+# --- CORRECCIÓN ---
+# La clase debe llamarse 'Product' en lugar de 'Producto' para coincidir con la definición del modelo.
+# The corrected line will only import the classes that are used in this file.
+from models import Product, Afiliado, Categoria, Subcategoria
 # --- Custom validator for relative paths or full URLs ---
 def validate_image_path(form, field):
     """
@@ -25,7 +25,7 @@ def validate_image_path(form, field):
 class LoginForm(FlaskForm):
     """Form for user login."""
     username = StringField('Usuario', validators=[DataRequired()])
-    password = PasswordField('Contraseña', validators=[DataRequired()]) 
+    password = PasswordField('Contraseña', validators=[DataRequired()])
     submit = SubmitField('Iniciar Sesión')
 
 class ProductForm(FlaskForm):
@@ -132,7 +132,7 @@ class AdvertisementForm(FlaskForm):
 
     producto = QuerySelectField(
         'Producto Recomendado',
-        query_factory=lambda: Producto.query.order_by(Producto.nombre).all(),
+        query_factory=lambda: Product.query.order_by(Product.nombre).all(),
         get_pk=lambda a: a.id,
         get_label=lambda a: a.nombre,
         allow_blank=True,
@@ -201,7 +201,7 @@ class AffiliateStatisticForm(FlaskForm):
     submit = SubmitField('Generar Reporte')
 
 class AdsenseConfigForm(FlaskForm):
-    """Form for AdSense configuration."""
+    """Formulario para la configuración de AdSense."""
     client_id = StringField('ID de Cliente AdSense (data-ad-client)', validators=[DataRequired(), Length(max=50)])
     ad_slot_header = StringField('ID de Slot para Encabezado', validators=[Optional(), Length(max=50)])
     ad_slot_sidebar = StringField('ID de Slot para Barra Lateral', validators=[Optional(), Length(max=50)])

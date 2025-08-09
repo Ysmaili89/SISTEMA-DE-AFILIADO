@@ -1,8 +1,7 @@
 # app.py
 # Importaciones de bibliotecas estándar
 import os
-import click
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 
 # Importaciones de terceros
 from flask import Flask, render_template
@@ -18,27 +17,20 @@ import markdown
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Category, Subcategory,
-    Product, Article, Testimonial, Affiliate, AdsenseConfig,
-    AffiliateStatistic
+    Product, Article, Testimonial, Affiliate, AdsenseConfig
 )
 from utils import slugify
 
 # Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
+
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
-# Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
 
 # -------------------- CONFIGURACIÓN DE FLASK-BABEL --------------------
 def get_application_locale():
     # Esta función determina el 'locale' para Flask-Babel
     return 'es'
-
-# -------------------- INYECTAR DATOS GLOBALES --------------------
-def inject_social_media_links():
-    # Inyecta enlaces de redes sociales en el contexto de Jinja2
-    links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
-    return dict(social_media_links=links)
 
 # -------------------- FÁBRICA DE APLICACIONES PRINCIPALES --------------------
 def create_app():
@@ -56,26 +48,16 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app) 
+    # CORRECCIÓN F841: La variable 'csrf' ya no es necesaria. La extensión se inicializa al pasar 'app'.
+    CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
-    # --------------------------------------------------------------------------
-    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
-    # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
-    # gestionar los cambios en la base de datos.
-    # --------------------------------------------------------------------------
     with app.app_context():
         # ADVERTENCIA: Se comenta db.create_all() para evitar conflictos con Flask-Migrate.
         # db.create_all()
         pass
-    
-    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
-    # Comandos:
-    # 1. flask db init (solo la primera vez)
-    # 2. flask db migrate -m "Mensaje de la migración"
-    # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp
@@ -86,19 +68,24 @@ def create_app():
     app.register_blueprint(api_bp)
 
     # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
-    app.context_processor(inject_social_media_links)
+    # CORRECCIÓN F821: Las funciones se inyectan en el contexto, no se llaman directamente.
+    @app.context_processor
+    def inject_social_media_links():
+        # Inyecta enlaces de redes sociales en el contexto de Jinja2
+        links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
+        return dict(social_media_links=links)
 
     @app.context_processor
     def inject_adsense_config():
         try:
             config = AdsenseConfig.query.first()
-            if config:
+            if config and config.is_active:
                 return dict(
                     adsense_client_id=config.adsense_client_id,
-                    adsense_slot_header=config.adsense_slot_header,
-                    adsense_slot_sidebar=config.adsense_slot_sidebar,
-                    adsense_slot_article_top=config.adsense_slot_article_top,
-                    adsense_slot_article_bottom=config.adsense_slot_article_bottom
+                    adsense_slot_header=config.ad_slot_header,
+                    adsense_slot_sidebar=config.ad_slot_sidebar,
+                    adsense_slot_article_top=config.ad_slot_article_top,
+                    adsense_slot_article_bottom=config.ad_slot_article_bottom
                 )
         except Exception:
             pass
@@ -157,10 +144,10 @@ def create_app():
             if not AdsenseConfig.query.first():
                 db.session.add(AdsenseConfig(
                     adsense_client_id='ca-pub-1234567890123456',
-                    adsense_slot_header='1111111111',
-                    adsense_slot_sidebar='2222222222',
-                    adsense_slot_article_top='3333333333',
-                    adsense_slot_article_bottom='4444444444'
+                    ad_slot_header='1111111111',
+                    ad_slot_sidebar='2222222222',
+                    ad_slot_article_top='3333333333',
+                    ad_slot_article_bottom='4444444444'
                 ))
 
             categorias = {
@@ -178,14 +165,12 @@ def create_app():
                     db.session.add(subcategoria)
                     subcategorias_db[sub_nombre] = subcategoria
 
-            # Genera 50 productos de ejemplo
             subcategorias_list = list(subcategorias_db.values())
             for i in range(1, 51):
                 nombre = f"Producto Ejemplo {i}"
                 precio = 10.0 + (i * 5)
                 desc = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
                 
-                # Asigna productos a las subcategorías de manera cíclica
                 subcat = subcategorias_list[i % len(subcategorias_list)]
                 
                 db.session.add(Product(
@@ -213,14 +198,14 @@ def create_app():
                 ))
 
             redes = [
-                ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
-                ('X', 'https://x.com', 'fab fa-x-twitter'),
-                ('Instagram', 'https://instagram.com', 'fab fa-instagram'),
-                ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
-                ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
+                ('Facebook', 'https://facebook.com', 'fab fa-facebook-f', 1),
+                ('X', 'https://x.com', 'fab fa-x-twitter', 2),
+                ('Instagram', 'https://instagram.com', 'fab fa-instagram', 3),
+                ('YouTube', 'https://youtube.com', 'fab fa-youtube', 4),
+                ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in', 5),
             ]
-            for name, url, icon in redes:
-                db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
+            for name, url, icon, order in redes:
+                db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True, order_num=order))
 
             db.session.add(Testimonial(
                 author="Juan Pérez",
@@ -233,8 +218,6 @@ def create_app():
 
             db.session.commit()
             print("✅ Datos iniciales creados.")
-
-    app.cli.add_command(seed_initial_data)
 
     # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
@@ -253,20 +236,7 @@ def create_app():
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app
 
-# -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
-def set_admin_password(app, new_password):
-    with app.app_context():
-        admin_user = User.query.filter_by(username='admin').first()
-        if admin_user:
-            admin_user.password_hash = generate_password_hash(new_password)
-            db.session.commit()
-            print("Contraseña actualizada para 'admin'.")
-        else:
-            print("Usuario 'admin' no encontrado.")
-
 # -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
 if __name__ == "__main__":
     app = create_app()
-    with app.app_context():
-        pass
     app.run(debug=True)

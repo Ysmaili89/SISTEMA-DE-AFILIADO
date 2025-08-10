@@ -23,15 +23,12 @@ bp = Blueprint('publico', __name__)
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
-    # La versión más reciente de la biblioteca de OpenAI no acepta el argumento 'proxies'.
-    # Si necesitas usar proxies, configúralos a través de variables de entorno del sistema operativo.
     openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 except Exception as e:
-    # Capturar el error para depuración
-    print(f"Error al inicializar el cliente OpenAI en public.py: {e}. Asegúrese de que OPENAI_API_KEY esté configurado.")
+    print(f"Error al inicializar el cliente OpenAI en public.py: {e}.")
     openai_client = None
 
-# --- Helper functions for chatbot tools ---
+# --- Funciones auxiliares para herramientas de chatbot ---
 # Estas funciones interactúan con la base de datos y preparan los datos para el chatbot.
 
 def get_all_products_for_chatbot():
@@ -200,10 +197,10 @@ def productos_por_slug(slug):
         products_in_subcat = products_pagination.items
         total_pages = products_pagination.pages
         return render_template('productos_por_subcategoria.html',
-                               subcat_name=subcat.nombre,
-                               productos=products_in_subcat,
-                               page=page,
-                               total_pages=total_pages)
+                            subcat_name=subcat.nombre,
+                            productos=products_in_subcat,
+                            page=page,
+                            total_pages=total_pages)
     flash('Subcategoría no encontrada.', 'danger')
     return redirect(url_for('publico.show_categorias'))
 
@@ -410,11 +407,11 @@ def search_results():
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
 
     return render_template('search_results.html',
-                           query=query,
-                           productos=productos_found,
-                           articulos=articulos_found,
-                           page=page,
-                           total_pages=total_pages)
+                        query=query,
+                        productos=productos_found,
+                        articulos=articulos_found,
+                        page=page,
+                        total_pages=total_pages)
 
 ### Interfaz de usuario de afiliados y rutas API
 

@@ -1,29 +1,68 @@
+# Importaciones de Flask y extensiones
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
+
+# Importaciones para manejo de base de datos y ORM
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
+
+# Importaciones para manejo de fechas
 from datetime import datetime, timezone
 import functools
 
-from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Afiliado, AffiliateStatistic, AdsenseConfig
+# Importaciones de modelos
+from models import (
+    User,
+    Product,
+    Category,
+    Subcategory,
+    Article,
+    SyncInfo,
+    SocialMediaLink,
+    ContactMessage,
+    Testimonial,
+    # Advertisement,  # <-- eliminado porque no se usa
+    Affiliate,
+    AffiliateStatistic,
+    AdsenseConfig,
+)
+
+# Importaciones de extensiones
 from extensions import db
-from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, TestimonialForm, AdvertisementForm, AffiliateForm, AdsenseConfigForm
+
+# Importaciones de formularios
+from forms import (
+    LoginForm,
+    ProductForm,
+    CategoryForm,
+    SubCategoryForm,
+    ArticleForm,
+    ApiSyncForm,
+    SocialMediaForm,
+    TestimonialForm,
+    AffiliateForm,
+    AdsenseConfigForm,
+)
+
+# Utilidades y servicios
 from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
+# Creación del blueprint admin
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# --- Decorator for admin-only access ---
+# --- Decorador para acceso solo para administradores ---
 def admin_required(f):
-    """Custom decorator to ensure the user is an administrator."""
+    """Decorador personalizado para garantizar que el usuario sea un administrador."""
     @functools.wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_admin:
-            flash('Access denied: You do not have administrator permissions.', 'danger')
+            flash('Acceso denegado: No tiene permisos de administrador.', 'danger')
             return redirect(url_for('admin.admin_login'))
         return f(*args, **kwargs)
     return decorated_function
+
 
 # --- Authentication Routes ---
 @bp.route('/login', methods=['GET', 'POST'])
@@ -57,12 +96,13 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     """Displays the admin dashboard with summary statistics."""
+    # Using consistent, standard Python class names (e.g., from `models` module)
     product_count = Product.query.count()
     category_count = Category.query.count()
     article_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
-    affiliate_count = Afiliado.query.count()
+    affiliate_count = Affiliate.query.count()
     affiliate_statistic_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
@@ -73,7 +113,6 @@ def admin_dashboard():
                            pending_testimonials_count=pending_testimonials_count,
                            affiliate_count=affiliate_count,
                            affiliate_statistic_count=affiliate_statistic_count)
-
 # --- Product Management ---
 @bp.route('/products')
 @admin_required
@@ -651,82 +690,12 @@ def admin_toggle_visibility_testimonial(testimonial_id):
     return redirect(url_for('admin.admin_testimonials'))
 
 # --- Advertisement Management ---
-@bp.route('/advertisements')
-@admin_required
-def admin_advertisements():
-    """Displays a list of all advertisements."""
-    advertisements = Advertisement.query.options(joinedload(Advertisement.product)).all()
-    return render_template('admin/admin_advertisements.html', advertisements=advertisements)
-
-@bp.route('/advertisements/add', methods=['GET', 'POST'])
-@admin_required
-def admin_add_advertisement():
-    """Adds a new advertisement."""
-    form = AdvertisementForm()
-    if form.validate_on_submit():
-        new_advertisement = Advertisement(
-            type=form.type.data,
-            title=form.title.data,
-            is_active=form.is_active.data,
-            text_content=form.text_content.data,
-            button_text=form.button_text.data,
-            button_url=form.button_url.data,
-            product_id=form.product.data.id if form.product.data else None,
-            image_url=form.image_url.data,
-            adsense_client_id=form.adsense_client_id.data,
-            adsense_slot_id=form.adsense_slot_id.data,
-            start_date=form.start_date.data,
-            end_date=form.end_date.data
-        )
-        try:
-            db.session.add(new_advertisement)
-            db.session.commit()
-            flash('Advertisement added successfully!', 'success')
-            return redirect(url_for('admin.admin_advertisements'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error adding advertisement: {e}', 'danger')
-    return render_template('admin/admin_add_edit_advertisement.html', form=form)
-
-@bp.route('/advertisements/edit/<int:advertisement_id>', methods=['GET', 'POST'])
-@admin_required
-def admin_edit_advertisement(advertisement_id):
-    """Edits an existing advertisement."""
-    advertisement = Advertisement.query.get_or_404(advertisement_id)
-    form = AdvertisementForm(obj=advertisement)
-    if form.validate_on_submit():
-        form.populate_obj(advertisement)
-        advertisement.product_id = form.product.data.id if form.product.data else None
-        try:
-            db.session.commit()
-            flash('Advertisement updated successfully!', 'success')
-            return redirect(url_for('admin.admin_advertisements'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating advertisement: {e}', 'danger')
-    return render_template('admin/admin_add_edit_advertisement.html', form=form, advertisement=advertisement)
-
-@bp.route('/advertisements/delete/<int:advertisement_id>', methods=['POST'])
-@admin_required
-def admin_delete_advertisement(advertisement_id):
-    """Deletes an advertisement."""
-    advertisement = Advertisement.query.get_or_404(advertisement_id)
-    try:
-        db.session.delete(advertisement)
-        db.session.commit()
-        flash('Advertisement deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting advertisement: {e}', 'danger')
-    return redirect(url_for('admin.admin_advertisements'))
-
-
 # --- Affiliate Management ---
-@bp.route('/afiliados')
+@bp.route('/affiliates')
 @admin_required
 def admin_affiliates():
     """Displays a list of all affiliates."""
-    affiliates = Afiliado.query.all()
+    affiliates = Affiliate.query.all()
     return render_template('admin/admin_affiliates.html', affiliates=affiliates)
 
 @bp.route('/affiliates/add', methods=['GET', 'POST'])
@@ -735,7 +704,7 @@ def admin_add_affiliate():
     """Adds a new affiliate."""
     form = AffiliateForm()
     if form.validate_on_submit():
-        new_affiliate = Afiliado(
+        new_affiliate = Affiliate(
             name=form.name.data,
             referral_link=form.referral_link.data,
             email=form.email.data
@@ -754,7 +723,7 @@ def admin_add_affiliate():
 @admin_required
 def admin_edit_affiliate(affiliate_id):
     """Edits an existing affiliate."""
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     form = AffiliateForm(obj=affiliate)
     if form.validate_on_submit():
         form.populate_obj(affiliate)
@@ -771,7 +740,7 @@ def admin_edit_affiliate(affiliate_id):
 @admin_required
 def admin_delete_affiliate(affiliate_id):
     """Deletes an affiliate."""
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     try:
         db.session.delete(affiliate)
         db.session.commit()
@@ -780,7 +749,6 @@ def admin_delete_affiliate(affiliate_id):
         db.session.rollback()
         flash(f'Error deleting affiliate: {e}', 'danger')
     return redirect(url_for('admin.admin_affiliates'))
-
 
 # --- Affiliate Statistics Management ---
 @bp.route('/affiliate_statistics')

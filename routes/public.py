@@ -158,7 +158,7 @@ def index():
     """Renders the main index page with paginated products."""
     page = request.args.get('page', 1, type=int)
     per_page = 9
-    productos_pagination = Product.query.order_by(Product.creation_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    productos_pagination = Product.query.order_by(Product.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     productos = productos_pagination.items
     total_pages = productos_pagination.pages
     return render_template('index.html', productos=productos, page=page, total_pages=total_pages)

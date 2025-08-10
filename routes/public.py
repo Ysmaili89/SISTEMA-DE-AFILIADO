@@ -137,10 +137,10 @@ def inject_adsense_config():
     if adsense_config_db:
         return dict(
             adsense_client_id=adsense_config_db.adsense_client_id,
-            adsense_slot_header=adsense_config_db.adsense_slot_1,
-            adsense_slot_sidebar=adsense_config_db.adsense_slot_2,
-            adsense_slot_content=adsense_config_db.adsense_slot_3,
-            adsense_slot_footer='' # Asigna un slot si lo tienes, o déjalo vacío
+            adsense_slot_header=adsense_config_db.adsense_slot_header,
+            adsense_slot_sidebar=adsense_config_db.adsense_slot_sidebar,
+            adsense_slot_content=adsense_config_db.adsense_slot_article_top, # Suponiendo que slot_3 se asigna a article_top
+            adsense_slot_footer='' # Asigna una ranura si tienes una, o déjala vacía
         )
     else:
         return dict(
@@ -150,7 +150,6 @@ def inject_adsense_config():
             adsense_slot_content='',
             adsense_slot_footer=''
         )
-
 
 # --- Public Routes ---
 
@@ -420,6 +419,8 @@ def search_results():
 
 ### Interfaz de usuario de afiliados y rutas API
 
+# ... (all other routes and functions)
+
 @bp.route('/ref/<int:afiliado_id>')
 def register_click(afiliado_id):
     """
@@ -435,12 +436,12 @@ def register_click(afiliado_id):
 
     if estadistica:
         # Si existe, incrementa el contador de clics
-        estadistica.clicks += 1
+        estadistica.clics += 1
     else:
         # Si no existe, crea una nueva entrada
         estadistica = AffiliateStatistic(
             affiliate_id=afiliado.id,
-            clicks=1,
+            clics=1,
             date=date.today()
         )
         db.session.add(estadistica)

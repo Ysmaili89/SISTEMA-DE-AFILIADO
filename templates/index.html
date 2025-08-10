@@ -1,5 +1,3 @@
-{% extends 'base.html' %}
-
 {% block title %}Inicio - Afiliados Online{% endblock %}
 
 {% block meta_description %}
@@ -11,26 +9,35 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
 {% endblock %}
 
 {% block content %}
+<!-- Bloque de bienvenida y encabezado principal -->
 <header class="mb-5 text-center">
   <h1 class="display-4 fw-bold">Productos Destacados</h1>
   <p class="lead text-muted">Seleccionamos las mejores ofertas y productos populares para ayudarte a comprar con confianza.</p>
 </header>
 
+<!-- Sección de productos destacados, organizada en una cuadrícula adaptable -->
+<!-- Se ajusta la clase para mostrar 4 columnas en pantallas medianas y grandes -->
 <section class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
   {% for p in productos %}
+  <!-- Tarjeta individual de producto -->
   <div class="col d-flex">
     <div class="card h-100 shadow-sm rounded-3 overflow-hidden d-flex flex-column">
       <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" aria-label="Ver más sobre {{ p.nombre }}">
+        <!-- Contenedor para la imagen del producto -->
         <div class="image-container">
+          <!-- La clase 'img-fluid' asegura que la imagen sea responsiva -->
           <img src="{{ p.imagen }}" class="card-img-top img-fluid" alt="{{ p.nombre }}" loading="lazy">
         </div>
       </a>
+      <!-- Cuerpo de la tarjeta con título y botones -->
       <div class="card-body d-flex flex-column">
+        <!-- Título del producto. Se cambió a h3 para una mejor semántica. -->
         <h3 class="card-title h6 mb-2 fw-bold" title="{{ p.nombre }}">
           <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" class="text-decoration-none text-dark stretched-link">
             {{ p.nombre }}
           </a>
         </h3>
+        <!-- Botones de acción. 'mt-auto' asegura que se peguen al final de la tarjeta. -->
         <div class="mt-auto d-grid gap-2">
           <a href="{{ url_for('publico.product_detail', slug=p.slug) }}" class="btn btn-outline-primary btn-sm" aria-label="Ver detalles de {{ p.nombre }}">
             <i class="fas fa-info-circle me-1"></i> Ver más
@@ -43,6 +50,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
     </div>
   </div>
   {% else %}
+  <!-- Mensaje si no hay productos disponibles -->
   <div class="col-12">
     <div class="alert alert-info text-center" role="alert">
       <i class="fas fa-exclamation-circle me-2"></i> No hay productos disponibles en este momento. Vuelve pronto para más recomendaciones.
@@ -51,6 +59,7 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   {% endfor %}
 </section>
 
+<!-- Sección para destacar la misión de la página -->
 <section class="my-5 text-center py-5 bg-light rounded-3 shadow-sm">
   <h2 class="mb-3 display-6 fw-bold">¿Por qué confiar en nosotros?</h2>
   <p class="mb-4 lead px-md-5">Nuestro equipo analiza, compara y selecciona productos de forma imparcial para que tomes decisiones informadas con confianza.</p>
@@ -59,11 +68,13 @@ productos destacados, ofertas online, comparativas, reseñas, recomendaciones, g
   </a>
 </section>
 
+<!-- Sección de testimonios, solo se muestra si existen -->
 {% if testimonios %}
 <section class="my-5 py-5">
   <h2 class="text-center mb-4 display-6 fw-bold">Lo que dicen nuestros usuarios</h2>
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for t in testimonios %}
+    <!-- Tarjeta individual de testimonio -->
     <div class="col d-flex">
       <div class="card h-100 shadow-sm border-0 rounded-3">
         <div class="card-body d-flex flex-column">

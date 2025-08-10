@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
 
-# Import all necessary forms
+# Importar todos los formularios necesarios
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
 
 from utils import slugify
@@ -19,7 +19,7 @@ import functools
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# Custom decorator to ensure the user is an admin
+# Decorador personalizado para garantizar que el usuario sea un administrador
 def admin_required(f):
     @functools.wraps(f)
     @login_required
@@ -117,11 +117,12 @@ def admin_products():
 @admin_required
 def admin_add_product():
     form = ProductForm()
-    form.categoria_id.choices = [(s.id, f"{s.categoria.nombre} > {s.nombre}") for s in Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by('nombre').all()]
-    form.categoria_id.choices.insert(0, ('', 'Selecciona una Subcategoría'))
-
+    # The QuerySelectField automatically populates choices, so manually setting them is not needed.
+    # However, if you want a custom display, you can still use the query_factory in forms.py
+    
     if form.validate_on_submit():
-        selected_subcategoria_id = form.categoria_id.data if form.categoria_id.data else None
+        # Access the subcategory object directly from the form and get its ID
+        selected_subcategoria_id = form.subcategoria.data.id if form.subcategoria.data else None
 
         external_id_value = form.external_id.data.strip()
         if external_id_value == '':
@@ -155,15 +156,11 @@ def admin_add_product():
 def admin_edit_product(product_id):
     product = Producto.query.get_or_404(product_id)
     form = ProductForm(obj=product)
-    form.categoria_id.choices = [(s.id, f"{s.categoria.nombre} > {s.nombre}") for s in Subcategoria.query.options(joinedload(Subcategoria.categoria)).order_by('nombre').all()]
-    form.categoria_id.choices.insert(0, ('', 'Selecciona una Subcategoría'))
-
-    if request.method == 'GET':
-        form.categoria_id.data = product.subcategoria_id if product.subcategoria_id else ''
-        form.external_id.data = product.external_id if product.external_id is not None else ''
 
     if form.validate_on_submit():
-        selected_subcategoria_id = form.categoria_id.data if form.categoria_id.data else None
+        # Access the subcategory object directly from the form and get its ID
+        selected_subcategoria = form.subcategoria.data
+        product.subcategoria_id = selected_subcategoria.id if selected_subcategoria else None
 
         external_id_value = form.external_id.data.strip()
         if external_id_value == '':
@@ -171,7 +168,6 @@ def admin_edit_product(product_id):
 
         form.populate_obj(product)
         product.slug = slugify(product.nombre)
-        product.subcategoria_id = selected_subcategoria_id
         product.external_id = external_id_value
         product.fecha_actualizacion = datetime.now(timezone.utc)
 
@@ -444,7 +440,7 @@ def admin_sync_api_products():
 # Helper dictionary to map platform names to Font Awesome icon classes
 PLATFORM_ICONS = {
     'Facebook': 'fab fa-facebook-f',
-    'Twitter': 'fab fa-x-twitter', # Using fa-x-twitter for the new X icon
+    'Twitter': 'fab fa-x-twitter',
     'Instagram': 'fab fa-instagram',
     'LinkedIn': 'fab fa-linkedin-in',
     'YouTube': 'fab fa-youtube',
@@ -461,7 +457,7 @@ PLATFORM_ICONS = {
 @bp.route('/social_media')
 @admin_required
 def admin_social_media():
-    social_media_links = SocialMediaLink.query.order_by(SocialMediaLink.order_num).all() # Ordered by order_num
+    social_media_links = SocialMediaLink.query.order_by(SocialMediaLink.order_num).all()
     return render_template('admin/admin_social_media.html', social_media_links=social_media_links)
 
 @bp.route('/social_media/add', methods=['GET', 'POST'])
@@ -470,14 +466,14 @@ def admin_add_social_media():
     form = SocialMediaForm()
     if form.validate_on_submit():
         platform_name = form.platform.data
-        icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link') # Default icon if not found
+        icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
 
         new_link = SocialMediaLink(
             platform=platform_name,
             url=form.url.data,
             icon_class=icon_class,
             is_visible=form.is_visible.data,
-            order_num=SocialMediaLink.query.count() # Assign a simple order number
+            order_num=SocialMediaLink.query.count()
         )
         try:
             db.session.add(new_link)
@@ -559,7 +555,7 @@ def admin_view_message(message_id):
             message.response_text = form.response_text.data
             message.response_timestamp = datetime.now(timezone.utc)
         else:
-            message.response_text = None # Clear response if text is empty
+            message.response_text = None
             message.response_timestamp = None
 
         try:
@@ -728,7 +724,7 @@ def admin_like_testimonial(testimonial_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error al añadir me gusta al testimonio: {e}', 'danger')
-    return redirect(url_for('admin.admin_testimonials')) # Redirect back to the testimonials list
+    return redirect(url_for('admin.admin_testimonials'))
 
 @bp.route('/testimonials/dislike/<int:testimonial_id>', methods=['POST'])
 @admin_required
@@ -741,43 +737,40 @@ def admin_dislike_testimonial(testimonial_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error al añadir no me gusta al testimonio: {e}', 'danger')
-    return redirect(url_for('admin.admin_testimonials')) # Redirect back to the testimonials list
+    return redirect(url_for('admin.admin_testimonials'))
 
 
 # --- Admin Advertisements Management ---
 @bp.route('/advertisements')
 @admin_required
 def admin_advertisements():
-    # Corrected model and attribute names from Spanish to English
-    advertisements = Advertisement.query.options(joinedload(Advertisement.afiliado)).all()
+    advertisements = Advertisement.query.options(joinedload(Advertisement.product)).all()
     return render_template('admin/admin_advertisements.html', advertisements=advertisements)
 
 @bp.route('/advertisements/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_advertisement():
     form = AdvertisementForm()
-    # The AffiliateForm is used here. So we need to provide choices for the affiliate field.
-    form.afiliado_id.choices = [(a.id, a.nombre) for a in Afiliado.query.order_by(Afiliado.nombre).all()]
-    form.afiliado_id.choices.insert(0, ('', '-- Seleccione un Afiliado --'))
-
     if form.validate_on_submit():
-        selected_afiliado_id = form.afiliado_id.data if form.afiliado_id.data else None
-        
         new_advertisement = Advertisement(
-            name=form.name.data,
-            image_url=form.image_url.data,
-            link_url=form.link_url.data,
+            type=form.type.data,
+            title=form.title.data,
             is_active=form.is_active.data,
-            afiliado_id=selected_afiliado_id,
+            text_content=form.text_content.data,
+            button_text=form.button_text.data,
+            button_url=form.button_url.data,
+            product_id=form.product.data.id if form.product.data else None,
+            image_url=form.image_url.data,
+            adsense_client_id=form.adsense_client_id.data,
+            adsense_slot_id=form.adsense_slot_id.data,
+            start_date=form.start_date.data,
+            end_date=form.end_date.data
         )
         try:
             db.session.add(new_advertisement)
             db.session.commit()
             flash('Anuncio añadido exitosamente!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
-        except IntegrityError:
-            db.session.rollback()
-            flash('Error: Ya existe un anuncio con este nombre.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al añadir anuncio: {e}', 'danger')
@@ -788,27 +781,25 @@ def admin_add_advertisement():
 def admin_edit_advertisement(advertisement_id):
     advertisement = Advertisement.query.get_or_404(advertisement_id)
     form = AdvertisementForm(obj=advertisement)
-    form.afiliado_id.choices = [(a.id, a.nombre) for a in Afiliado.query.order_by(Afiliado.nombre).all()]
-    form.afiliado_id.choices.insert(0, ('', '-- Seleccione un Afiliado --'))
 
     if request.method == 'GET':
-        form.afiliado_id.data = advertisement.afiliado_id if advertisement.afiliado_id else ''
+        # Need to set the product data correctly for QuerySelectField
+        form.product.data = advertisement.product
 
     if form.validate_on_submit():
-        selected_afiliado_id = form.afiliado_id.data if form.afiliado_id.data else None
+        # Handle product field separately as it's a QuerySelectField
         form.populate_obj(advertisement)
-        advertisement.afiliado_id = selected_afiliado_id
+        advertisement.product_id = form.product.data.id if form.product.data else None
+        
         try:
             db.session.commit()
             flash('Anuncio actualizado exitosamente!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
-        except IntegrityError:
-            db.session.rollback()
-            flash('Error: Ya existe un anuncio con este nombre.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar anuncio: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form, advertisement=advertisement)
+
 
 @bp.route('/advertisements/delete/<int:advertisement_id>', methods=['POST'])
 @admin_required
@@ -817,102 +808,120 @@ def admin_delete_advertisement(advertisement_id):
     try:
         db.session.delete(advertisement)
         db.session.commit()
-        flash('Anuncio eliminado exitosamente!', 'success')
+        flash('Anuncio eliminado permanentemente.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar anuncio: {e}', 'danger')
     return redirect(url_for('admin.admin_advertisements'))
 
-# --- Admin Afiliados Management ---
-@bp.route('/afiliados')
+# --- Admin Affiliate Management ---
+@bp.route('/affiliates')
 @admin_required
-def admin_afiliados():
-    afiliados = Afiliado.query.order_by(Afiliado.nombre).all()
-    return render_template('admin/admin_afiliados.html', afiliados=afiliados)
+def admin_affiliates():
+    affiliates = Afiliado.query.all()
+    return render_template('admin/admin_affiliates.html', affiliates=affiliates)
 
-@bp.route('/afiliados/add', methods=['GET', 'POST'])
+@bp.route('/affiliates/add', methods=['GET', 'POST'])
 @admin_required
-def admin_add_afiliado():
+def admin_add_affiliate():
     form = AffiliateForm()
     if form.validate_on_submit():
-        new_afiliado = Afiliado(
+        new_affiliate = Afiliado(
             nombre=form.nombre.data,
-            enlace_afiliado=form.enlace_afiliado.data,
-            api_key=form.api_key.data,
-            is_active=form.is_active.data,
+            email=form.email.data,
+            enlace_referido=form.enlace_referido.data,
+            activo=form.activo.data
         )
         try:
-            db.session.add(new_afiliado)
+            db.session.add(new_affiliate)
             db.session.commit()
             flash('Afiliado añadido exitosamente!', 'success')
-            return redirect(url_for('admin.admin_afiliados'))
+            return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con este nombre.', 'danger')
+            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al añadir afiliado: {e}', 'danger')
-    return render_template('admin/admin_add_edit_afiliado.html', form=form)
+    return render_template('admin/admin_add_edit_affiliate.html', form=form)
 
-@bp.route('/afiliados/edit/<int:afiliado_id>', methods=['GET', 'POST'])
+@bp.route('/affiliates/edit/<int:affiliate_id>', methods=['GET', 'POST'])
 @admin_required
-def admin_edit_afiliado(afiliado_id):
-    afiliado = Afiliado.query.get_or_404(afiliado_id)
-    form = AffiliateForm(obj=afiliado)
-
+def admin_edit_affiliate(affiliate_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
+    form = AffiliateForm(obj=affiliate)
     if form.validate_on_submit():
-        form.populate_obj(afiliado)
+        form.populate_obj(affiliate)
         try:
             db.session.commit()
             flash('Afiliado actualizado exitosamente!', 'success')
-            return redirect(url_for('admin.admin_afiliados'))
+            return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con este nombre.', 'danger')
+            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar afiliado: {e}', 'danger')
-    return render_template('admin/admin_add_edit_afiliado.html', form=form, afiliado=afiliado)
+    return render_template('admin/admin_add_edit_affiliate.html', form=form, affiliate=affiliate)
 
-@bp.route('/afiliados/delete/<int:afiliado_id>', methods=['POST'])
+@bp.route('/affiliates/delete/<int:affiliate_id>', methods=['POST'])
 @admin_required
-def admin_delete_afiliado(afiliado_id):
-    afiliado = Afiliado.query.get_or_404(afiliado_id)
+def admin_delete_affiliate(affiliate_id):
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
     try:
-        db.session.delete(afiliado)
+        db.session.delete(affiliate)
         db.session.commit()
         flash('Afiliado eliminado exitosamente!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar afiliado: {e}', 'danger')
-    return redirect(url_for('admin.admin_afiliados'))
+    return redirect(url_for('admin.admin_affiliates'))
 
-# --- Admin Afiliados Statistics Management ---
-@bp.route('/afiliados/estadisticas')
+# --- Admin Affiliate Statistics Management ---
+@bp.route('/affiliate_stats', methods=['GET', 'POST'])
 @admin_required
-def admin_afiliado_estadisticas():
-    # This route will show a list of all affiliate statistics, likely grouped by date or affiliate.
-    estadisticas = EstadisticaAfiliado.query.order_by(EstadisticaAfiliado.fecha.desc()).all()
-    return render_template('admin/admin_afiliado_estadisticas.html', estadisticas=estadisticas)
+def admin_affiliate_stats():
+    form = AffiliateStatisticForm()
+    stats = []
+    
+    if form.validate_on_submit():
+        query = EstadisticaAfiliado.query
+        
+        # Filter by affiliate if selected
+        if form.afiliado.data:
+            query = query.filter_by(afiliado_id=form.afiliado.data.id)
+            
+        # Filter by date range if provided
+        if form.start_date.data:
+            query = query.filter(EstadisticaAfiliado.timestamp >= form.start_date.data)
+        
+        if form.end_date.data:
+            query = query.filter(EstadisticaAfiliado.timestamp <= form.end_date.data)
+
+        stats = query.order_by(EstadisticaAfiliado.timestamp.desc()).all()
+
+    return render_template('admin/admin_affiliate_stats.html', form=form, stats=stats)
 
 # --- Admin Adsense Configuration Management ---
 @bp.route('/adsense_config', methods=['GET', 'POST'])
 @admin_required
 def admin_adsense_config():
-    adsense_config = AdsenseConfig.query.first()
-    if not adsense_config:
-        adsense_config = AdsenseConfig(adsense_client_id="ca-pub-", adsense_slot_1="", adsense_slot_2="", adsense_slot_3="")
-        db.session.add(adsense_config)
+    config = AdsenseConfig.query.first()
+    if not config:
+        config = AdsenseConfig()
+        db.session.add(config)
         db.session.commit()
     
-    form = AdsenseConfigForm(obj=adsense_config)
+    form = AdsenseConfigForm(obj=config)
+    
     if form.validate_on_submit():
-        form.populate_obj(adsense_config)
+        form.populate_obj(config)
         try:
             db.session.commit()
-            flash('Configuración de AdSense actualizada exitosamente!', 'success')
+            flash('Configuración de AdSense guardada exitosamente!', 'success')
             return redirect(url_for('admin.admin_adsense_config'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al actualizar la configuración de AdSense: {e}', 'danger')
+            flash(f'Error al guardar la configuración de AdSense: {e}', 'danger')
+            
     return render_template('admin/admin_adsense_config.html', form=form)

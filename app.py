@@ -1,12 +1,11 @@
 # app.py
-
 # Importaciones de bibliotecas estándar
 import os
 import click
 from datetime import datetime, timezone, date
 
 # Importaciones de terceros
-from flask import Flask
+from flask import Flask, render_template
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
@@ -18,15 +17,14 @@ import markdown
 # Importaciones de aplicaciones locales
 from extensions import db, login_manager
 from models import (
-    SocialMediaLink, User, Categoria, Subcategoria,
-    Producto, Articulo, Testimonial, Afiliado, AdsenseConfig,
-    EstadisticaAfiliado
+    SocialMediaLink, User, Category, Subcategory,
+    Product, Article, Testimonial, Affiliate, AdsenseConfig,
+    AffiliateStatistic
 )
 from utils import slugify
 
 # Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
-
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
 # Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
 load_dotenv()
@@ -39,8 +37,6 @@ def get_application_locale():
 # -------------------- INYECTAR DATOS GLOBALES --------------------
 def inject_social_media_links():
     # Inyecta enlaces de redes sociales en el contexto de Jinja2
-    # El código fallaba aquí porque la columna 'order_num' no existía
-    # en la base de datos. Se soluciona forzando la creación de la tabla.
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
@@ -66,14 +62,20 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÓN: Eliminar y volver a crear todas las tablas al iniciar la aplicación.
-    # Esta es una medida de depuración para asegurar que el esquema coincida.
-    # ¡ADVERTENCIA!: Esto borrará todos los datos existentes en la base de datos.
-    # Después de un despliegue exitoso, esta línea `db.drop_all()` debe eliminarse.
+    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
+    # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
+    # gestionar los cambios en la base de datos.
     # --------------------------------------------------------------------------
     with app.app_context():
-        db.drop_all()
-        db.create_all()
+        # ADVERTENCIA: Se comenta db.create_all() para evitar conflictos con Flask-Migrate.
+        # db.create_all()
+        pass
+    
+    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
+    # Comandos:
+    # 1. flask db init (solo la primera vez)
+    # 2. flask db migrate -m "Mensaje de la migración"
+    # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp
@@ -93,17 +95,19 @@ def create_app():
             if config:
                 return dict(
                     adsense_client_id=config.adsense_client_id,
-                    adsense_slot_1=config.adsense_slot_1,
-                    adsense_slot_2=config.adsense_slot_2,
-                    adsense_slot_3=config.adsense_slot_3,
+                    adsense_slot_header=config.adsense_slot_header,
+                    adsense_slot_sidebar=config.adsense_slot_sidebar,
+                    adsense_slot_article_top=config.adsense_slot_article_top,
+                    adsense_slot_article_bottom=config.adsense_slot_article_bottom
                 )
         except Exception:
             pass
         return dict(
             adsense_client_id='',
-            adsense_slot_1='',
-            adsense_slot_2='',
-            adsense_slot_3=''
+            adsense_slot_header='',
+            adsense_slot_sidebar='',
+            adsense_slot_article_top='',
+            adsense_slot_article_bottom=''
         )
 
     @app.context_processor
@@ -135,9 +139,6 @@ def create_app():
         with app.app_context():
             print("⚙️ Creando datos iniciales...")
             
-            # Nota: db.create_all() ya no es necesario aquí.
-            # Se ha movido a la función create_app() para que se ejecute siempre.
-            
             if User.query.first():
                 print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
                 return
@@ -145,20 +146,21 @@ def create_app():
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
 
-            if not Afiliado.query.filter_by(email='afiliado@example.com').first():
-                db.session.add(Afiliado(
-                    nombre='Afiliado de Prueba',
+            if not Affiliate.query.filter_by(email='afiliado@example.com').first():
+                db.session.add(Affiliate(
+                    name='Afiliado de Prueba',
                     email='afiliado@example.com',
-                    enlace_referido='http://localhost:5000/ref/1',
-                    activo=True
+                    referral_link='http://localhost:5000/ref/1',
+                    is_active=True
                 ))
 
             if not AdsenseConfig.query.first():
                 db.session.add(AdsenseConfig(
                     adsense_client_id='ca-pub-1234567890123456',
-                    adsense_slot_1='1111111111',
-                    adsense_slot_2='2222222222',
-                    adsense_slot_3='3333333333'
+                    adsense_slot_header='1111111111',
+                    adsense_slot_sidebar='2222222222',
+                    adsense_slot_article_top='3333333333',
+                    adsense_slot_article_bottom='4444444444'
                 ))
 
             categorias = {
@@ -166,44 +168,48 @@ def create_app():
                 'Hogar': ['Cocina', 'Jardín'],
                 'Deportes': ['Fitness']
             }
-            for cat, subs in categorias.items():
-                categoria = Categoria(nombre=cat, slug=slugify(cat))
+            subcategorias_db = {}
+            for cat_nombre, sub_nombres in categorias.items():
+                categoria = Category(name=cat_nombre, slug=slugify(cat_nombre))
                 db.session.add(categoria)
                 db.session.flush()
-                for sub in subs:
-                    db.session.add(Subcategoria(nombre=sub, slug=slugify(sub), categoria=categoria))
+                for sub_nombre in sub_nombres:
+                    subcategoria = Subcategory(name=sub_nombre, slug=slugify(sub_nombre), category=categoria)
+                    db.session.add(subcategoria)
+                    subcategorias_db[sub_nombre] = subcategoria
 
-            productos = [
-                ('Smartphone Pro X', 899.99, 'Smartphone con cámara de alta resolución y batería duradera.', 'Smartphones'),
-                ('Laptop UltraBook', 1200.00, 'Laptop ligera y potente.', 'Laptops'),
-                ('Batidora Multifuncional', 75.50, 'Batidora de cocina versátil.', 'Cocina'),
-                ('Mancuernas Ajustables', 150.00, 'Set de mancuernas para entrenar en casa.', 'Fitness'),
-            ]
-            for nombre, precio, desc, subcat_nombre in productos:
-                subcat = Subcategoria.query.filter_by(nombre=subcat_nombre).first()
-                if subcat:
-                    db.session.add(Producto(
-                        nombre=nombre,
-                        slug=slugify(nombre),
-                        precio=precio,
-                        descripcion=desc,
-                        imagen=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
-                        link=f'https://ejemplo.com/{slugify(nombre)}',
-                        subcategoria_id=subcat.id
-                    ))
+            # Genera 50 productos de ejemplo
+            subcategorias_list = list(subcategorias_db.values())
+            for i in range(1, 51):
+                nombre = f"Producto Ejemplo {i}"
+                precio = 10.0 + (i * 5)
+                desc = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
+                
+                # Asigna productos a las subcategorías de manera cíclica
+                subcat = subcategorias_list[i % len(subcategorias_list)]
+                
+                db.session.add(Product(
+                    name=nombre,
+                    slug=slugify(nombre),
+                    price=precio,
+                    description=desc,
+                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
+                    link=f'https://ejemplo.com/{slugify(nombre)}',
+                    subcategory_id=subcat.id
+                ))
 
             articulos = [
                 ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
             ]
-            for titulo, contenido, autor, imagen_texto in articulos:
-                db.session.add(Articulo(
-                    titulo=titulo,
-                    slug=slugify(titulo),
-                    contenido=f'<p>{contenido}</p>',
-                    autor=autor,
-                    fecha=datetime.now(timezone.utc),
-                    imagen=f'https://placehold.co/800x400/e0e0e0/555555?text={imagen_texto}'
+            for title, content, author, image_text in articulos:
+                db.session.add(Article(
+                    title=title,
+                    slug=slugify(title),
+                    content=f'<p>{content}</p>',
+                    author=author,
+                    date=datetime.now(timezone.utc),
+                    image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
                 ))
 
             redes = [
@@ -213,8 +219,8 @@ def create_app():
                 ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
                 ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
             ]
-            for nombre, url, icono in redes:
-                db.session.add(SocialMediaLink(platform=nombre, url=url, icon_class=icono, is_visible=True))
+            for name, url, icon in redes:
+                db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
 
             db.session.add(Testimonial(
                 author="Juan Pérez",
@@ -234,6 +240,15 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
+    
+    # -------------------- RUTA DE INICIO PÚBLICA --------------------
+    # CORRECCIÓN: Se actualiza la ruta de inicio para limitar a 12 productos
+    @public_bp.route('/')
+    @public_bp.route('/index')
+    def index():
+        productos = Product.query.order_by(Product.id.desc()).limit(12).all()
+        testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
+        return render_template('public/index.html', productos=productos, testimonios=testimonios)
 
     # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app

@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 import markdown
+from babel.numbers import format_currency as babel_format_currency
 
 # Importaciones de aplicaciones locales
 from extensions import db, login_manager
@@ -19,9 +20,6 @@ from models import (
     Product, Article, Testimonial, Affiliate, AdsenseConfig
 )
 from utils import slugify
-
-# Para formato de moneda
-from babel.numbers import format_currency as babel_format_currency
 
 # -------------------- CARGAR VARIABLES DE ENTORNO --------------------
 load_dotenv()
@@ -53,17 +51,20 @@ def create_app():
     login_manager.login_message_category = 'info'
 
     with app.app_context():
-        # WARNING: db.create_all() is commented out to avoid conflicts with Flask-Migrate.
+        # ADVERTENCIA: db.create_all() está comentado para evitar conflictos con Flask-Migrate.
         # db.create_all()
         pass
 
     # ----------- BLUEPRINTS -----------
+    # Importar los blueprints DENTRO de la función, después de inicializar la app
+    # Esto es CRUCIAL para evitar errores de importación circular
     from routes.admin import bp as admin_bp
     from routes.public import bp as public_bp
     from routes.api import bp as api_bp
-    app.register_blueprint(admin_bp)
+    
+    app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(public_bp)
-    app.register_blueprint(api_bp)
+    app.register_blueprint(api_bp, url_prefix='/api')
 
     # ----------- GLOBAL CONTEXT INJECTION -----------
     @app.context_processor
@@ -118,12 +119,12 @@ def create_app():
     # ----------- CUSTOM CLI COMMANDS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
-        """Creates initial data for the application if it doesn't exist."""
+        """Crea datos iniciales para la aplicación si no existen."""
         with app.app_context():
-            print("⚙️ Creating initial data...")
+            print("⚙️ Creando datos iniciales...")
             
             if User.query.first():
-                print("ℹ️ Users already exist. Skipping initial data creation.")
+                print("ℹ️ Los usuarios ya existen. Omitiendo la creación de datos iniciales.")
                 return
 
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
@@ -214,16 +215,16 @@ def create_app():
             ))
 
             db.session.commit()
-            print("✅ Initial data created.")
+            print("✅ Datos iniciales creados.")
 
-    # ----------- LOGIN MANAGER -----------
+    # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
     
     return app
 
-# -------------------- MAIN EXECUTION (FOR LOCAL DEVELOPMENT ONLY) --------------------
+# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
 if __name__ == "__main__":
     app = create_app()
     app.run(debug=True)

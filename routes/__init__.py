@@ -1,8 +1,11 @@
+# Código corregido
 from flask import Blueprint
+
+# Importaciones locales para registrar las rutas en el Blueprint
+from . import afiliados_routes
+from . import productos_routes
 
 # Crear un blueprint para las rutas
 bp = Blueprint('rutas', __name__)
 
-# Importar los módulos con las rutas para registrarlas en el blueprint
-from . import afiliados_routes  # noqa: F401
-from . import productos_routes  # noqa: F401
+# Aquí puedes añadir más módulos de rutas si los tienes

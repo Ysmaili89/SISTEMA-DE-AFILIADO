@@ -66,7 +66,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
 
-    # ----------- GLOBAL CONTEXT INJECTION -----------
+    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
     @app.context_processor
     def inject_social_media_links():
         links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
@@ -98,7 +98,7 @@ def create_app():
     def inject_now():
         return {'now': datetime.now(timezone.utc)}
 
-    # ----------- CUSTOM JINJA2 FILTERS -----------
+    # ----------- FILTROS JINJA2 PERSONALIZADOS -----------
     @app.template_filter('markdown')
     def markdown_filter(text):
         return markdown.markdown(text)
@@ -116,7 +116,7 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- CUSTOM CLI COMMANDS -----------
+    # ----------- COMANDOS CLI PERSONALIZADOS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
         """Crea datos iniciales para la aplicación si no existen."""

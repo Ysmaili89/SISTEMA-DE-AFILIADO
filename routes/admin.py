@@ -1,21 +1,15 @@
-# admin.py
-
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
-from werkzeug.security import check_password_hash
-from extensions import db
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timezone
+import functools
 
-# Import all necessary forms
-from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
-
+from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Afiliado, AffiliateStatistic, AdsenseConfig
+from extensions import db
+from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, TestimonialForm, AdvertisementForm, AffiliateForm, AdsenseConfigForm
 from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
-
-import functools
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -68,7 +62,7 @@ def admin_dashboard():
     article_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
-    affiliate_count = Affiliate.query.count()
+    affiliate_count = Afiliado.query.count()
     affiliate_statistic_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
@@ -188,8 +182,6 @@ def admin_delete_product(product_id):
         db.session.rollback()
         flash(f'Error deleting product: {e}', 'danger')
     return redirect(url_for('admin.admin_products'))
-
-
 
 # --- Category Management ---
 @bp.route('/categories')
@@ -323,8 +315,6 @@ def admin_delete_subcategory(category_id, subcategory_id):
         flash(f'Error deleting subcategory: {e}', 'danger')
     return redirect(url_for('admin.admin_categories'))
 
-
-
 # --- Article Management ---
 @bp.route('/articles')
 @admin_required
@@ -395,8 +385,6 @@ def admin_delete_article(article_id):
         flash(f'Error deleting article: {e}', 'danger')
     return redirect(url_for('admin.admin_articles'))
 
-
-
 # --- API Synchronization ---
 @bp.route('/api_products')
 @admin_required
@@ -441,8 +429,6 @@ def admin_sync_api_products():
             for error in errors:
                 flash(f"Error in {getattr(form, field).label.text}: {error}", 'danger')
     return redirect(url_for('admin.admin_api_products'))
-
-
 
 # --- Social Media Links Management ---
 PLATFORM_ICONS = {
@@ -532,8 +518,6 @@ def admin_delete_social_media(link_id):
         flash(f'Error deleting link: {e}', 'danger')
     return redirect(url_for('admin.admin_social_media'))
 
-
-
 # --- Contact Messages Management ---
 @bp.route('/messages')
 @admin_required
@@ -547,8 +531,8 @@ def admin_messages():
 def admin_view_message(message_id):
     """Views and manages a single contact message."""
     message = ContactMessage.query.get_or_404(message_id)
-    form = ContactMessageAdminForm(obj=message)
-
+    
+    # La lógica para marcar el mensaje como leído se ha mantenido
     if not message.is_read:
         message.is_read = True
         try:
@@ -556,27 +540,9 @@ def admin_view_message(message_id):
         except Exception as e:
             db.session.rollback()
             flash(f'Error marking message as read: {e}', 'danger')
-
-    if form.validate_on_submit():
-        message.is_read = form.is_read.data
-        message.is_archived = form.is_archived.data
-
-        if form.response_text.data:
-            message.response_text = form.response_text.data
-            message.response_timestamp = datetime.now(timezone.utc)
-        else:
-            message.response_text = None
-            message.response_timestamp = None
-
-        try:
-            db.session.commit()
-            flash('Message updated successfully!', 'success')
-            return redirect(url_for('admin.admin_messages'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating message: {e}', 'danger')
     
-    return render_template('admin/admin_view_message.html', message=message, form=form)
+    return render_template('admin/admin_view_message.html', message=message)
+
 
 @bp.route('/messages/delete/<int:message_id>', methods=['POST'])
 @admin_required
@@ -606,8 +572,6 @@ def admin_toggle_archive_message(message_id):
         db.session.rollback()
         flash(f'Error updating archive status: {e}', 'danger')
     return redirect(url_for('admin.admin_messages'))
-
-
 
 # --- Testimonial Management ---
 @bp.route('/testimonials')
@@ -686,8 +650,6 @@ def admin_toggle_visibility_testimonial(testimonial_id):
         flash(f'Error updating visibility status: {e}', 'danger')
     return redirect(url_for('admin.admin_testimonials'))
 
-
-
 # --- Advertisement Management ---
 @bp.route('/advertisements')
 @admin_required
@@ -760,11 +722,11 @@ def admin_delete_advertisement(advertisement_id):
 
 
 # --- Affiliate Management ---
-@bp.route('/affiliates')
+@bp.route('/afiliados')
 @admin_required
 def admin_affiliates():
     """Displays a list of all affiliates."""
-    affiliates = Affiliate.query.all()
+    affiliates = Afiliado.query.all()
     return render_template('admin/admin_affiliates.html', affiliates=affiliates)
 
 @bp.route('/affiliates/add', methods=['GET', 'POST'])
@@ -773,7 +735,7 @@ def admin_add_affiliate():
     """Adds a new affiliate."""
     form = AffiliateForm()
     if form.validate_on_submit():
-        new_affiliate = Affiliate(
+        new_affiliate = Afiliado(
             name=form.name.data,
             referral_link=form.referral_link.data,
             email=form.email.data
@@ -792,7 +754,7 @@ def admin_add_affiliate():
 @admin_required
 def admin_edit_affiliate(affiliate_id):
     """Edits an existing affiliate."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
     form = AffiliateForm(obj=affiliate)
     if form.validate_on_submit():
         form.populate_obj(affiliate)
@@ -809,7 +771,7 @@ def admin_edit_affiliate(affiliate_id):
 @admin_required
 def admin_delete_affiliate(affiliate_id):
     """Deletes an affiliate."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    affiliate = Afiliado.query.get_or_404(affiliate_id)
     try:
         db.session.delete(affiliate)
         db.session.commit()
@@ -819,105 +781,34 @@ def admin_delete_affiliate(affiliate_id):
         flash(f'Error deleting affiliate: {e}', 'danger')
     return redirect(url_for('admin.admin_affiliates'))
 
+
 # --- Affiliate Statistics Management ---
-@bp.route('/affiliates/<int:affiliate_id>/statistics')
+@bp.route('/affiliate_statistics')
 @admin_required
-def admin_affiliate_statistics(affiliate_id):
-    """Displays statistics for a specific affiliate."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
-    statistics = AffiliateStatistic.query.filter_by(affiliate_id=affiliate_id).order_by(AffiliateStatistic.date.desc()).all()
-    return render_template('admin/admin_affiliate_statistics.html', affiliate=affiliate, statistics=statistics)
-
-@bp.route('/affiliates/<int:affiliate_id>/statistics/add', methods=['GET', 'POST'])
-@admin_required
-def admin_add_affiliate_statistic(affiliate_id):
-    """Adds a new statistic entry for an affiliate."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
-    form = AffiliateStatisticForm()
-    if form.validate_on_submit():
-        new_statistic = AffiliateStatistic(
-            affiliate_id=affiliate.id,
-            date=form.date.data,
-            clicks=form.clicks.data,
-            registrations=form.registrations.data,
-            sales=form.sales.data,
-            commission_generated=form.commission_generated.data
-        )
-        try:
-            db.session.add(new_statistic)
-            db.session.commit()
-            flash('Affiliate statistic added successfully!', 'success')
-            return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error adding statistic: {e}', 'danger')
-    return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate)
-
-@bp.route('/affiliates/<int:affiliate_id>/statistics/edit/<int:statistic_id>', methods=['GET', 'POST'])
-@admin_required
-def admin_edit_affiliate_statistic(affiliate_id, statistic_id):
-    """Edits an existing affiliate statistic entry."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
-    statistic = AffiliateStatistic.query.filter_by(id=statistic_id, affiliate_id=affiliate_id).first_or_404()
-    form = AffiliateStatisticForm(obj=statistic)
-    if form.validate_on_submit():
-        form.populate_obj(statistic)
-        try:
-            db.session.commit()
-            flash('Affiliate statistic updated successfully!', 'success')
-            return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating statistic: {e}', 'danger')
-    return render_template('admin/admin_add_edit_affiliate_statistic.html', form=form, affiliate=affiliate, statistic=statistic)
-
-@bp.route('/affiliates/<int:affiliate_id>/statistics/delete/<int:statistic_id>', methods=['POST'])
-@admin_required
-def admin_delete_affiliate_statistic(affiliate_id, statistic_id):
-    """Deletes an affiliate statistic entry."""
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
-    statistic = AffiliateStatistic.query.filter_by(id=statistic_id, affiliate_id=affiliate_id).first_or_404()
-    try:
-        db.session.delete(statistic)
-        db.session.commit()
-        flash('Affiliate statistic deleted successfully!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting statistic: {e}', 'danger')
-    return redirect(url_for('admin.admin_affiliate_statistics', affiliate_id=affiliate.id))
+def admin_affiliate_statistics():
+    """Displays a list of all affiliate statistics."""
+    statistics = AffiliateStatistic.query.options(joinedload(AffiliateStatistic.affiliate)).order_by(AffiliateStatistic.timestamp.desc()).all()
+    return render_template('admin/admin_affiliate_statistics.html', statistics=statistics)
 
 
-
-# --- AdSense Configuration Management ---
-@bp.route('/adsense_config')
+# --- Adsense Configuration Management ---
+@bp.route('/adsense_config', methods=['GET', 'POST'])
 @admin_required
 def admin_adsense_config():
-    """Displays the AdSense configuration."""
-    config = AdsenseConfig.query.first()
-    form = AdsenseConfigForm(obj=config)
-    return render_template('admin/admin_adsense_config.html', form=form, config=config)
-
-@bp.route('/adsense_config/save', methods=['POST'])
-@admin_required
-def admin_save_adsense_config():
-    """Saves the AdSense configuration."""
+    """Handles the configuration for AdSense."""
     config = AdsenseConfig.query.first()
     if not config:
         config = AdsenseConfig()
         db.session.add(config)
-    
+        db.session.commit()
     form = AdsenseConfigForm(obj=config)
     if form.validate_on_submit():
         form.populate_obj(config)
         try:
             db.session.commit()
-            flash('AdSense configuration saved successfully!', 'success')
+            flash('AdSense configuration updated successfully!', 'success')
+            return redirect(url_for('admin.admin_adsense_config'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error saving AdSense configuration: {e}', 'danger')
-    else:
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"Error in {getattr(form, field).label.text}: {error}", 'danger')
-    
-    return redirect(url_for('admin.admin_adsense_config'))
+            flash(f'Error updating AdSense configuration: {e}', 'danger')
+    return render_template('admin/admin_adsense_config.html', form=form)

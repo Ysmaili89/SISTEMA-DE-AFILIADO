@@ -1,10 +1,9 @@
-# app.py
 # Importaciones de bibliotecas estándar
 import os
 from datetime import datetime, timezone
 
 # Importaciones de terceros
-from flask import Flask, render_template
+from flask import Flask
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
@@ -48,14 +47,13 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    # CORRECCIÓN F841: La variable 'csrf' ya no es necesaria. La extensión se inicializa al pasar 'app'.
     CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
     with app.app_context():
-        # ADVERTENCIA: Se comenta db.create_all() para evitar conflictos con Flask-Migrate.
+        # WARNING: db.create_all() is commented out to avoid conflicts with Flask-Migrate.
         # db.create_all()
         pass
 
@@ -67,11 +65,9 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp)
 
-    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
-    # CORRECCIÓN F821: Las funciones se inyectan en el contexto, no se llaman directamente.
+    # ----------- GLOBAL CONTEXT INJECTION -----------
     @app.context_processor
     def inject_social_media_links():
-        # Inyecta enlaces de redes sociales en el contexto de Jinja2
         links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
         return dict(social_media_links=links)
 
@@ -101,7 +97,7 @@ def create_app():
     def inject_now():
         return {'now': datetime.now(timezone.utc)}
 
-    # ----------- FILTROS JINJA2 PERSONALIZADOS -----------
+    # ----------- CUSTOM JINJA2 FILTERS -----------
     @app.template_filter('markdown')
     def markdown_filter(text):
         return markdown.markdown(text)
@@ -119,15 +115,15 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
+    # ----------- CUSTOM CLI COMMANDS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
-        """Crea datos iniciales para la aplicación si no existen."""
+        """Creates initial data for the application if it doesn't exist."""
         with app.app_context():
-            print("⚙️ Creando datos iniciales...")
+            print("⚙️ Creating initial data...")
             
             if User.query.first():
-                print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
+                print("ℹ️ Users already exist. Skipping initial data creation.")
                 return
 
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
@@ -135,7 +131,7 @@ def create_app():
 
             if not Affiliate.query.filter_by(email='afiliado@example.com').first():
                 db.session.add(Affiliate(
-                    name='Afiliado de Prueba',
+                    name='Test Affiliate',
                     email='afiliado@example.com',
                     referral_link='http://localhost:5000/ref/1',
                     is_active=True
@@ -150,44 +146,45 @@ def create_app():
                     ad_slot_article_bottom='4444444444'
                 ))
 
-            categorias = {
+            categories_data = {
                 'Tecnología': ['Smartphones', 'Laptops'],
                 'Hogar': ['Cocina', 'Jardín'],
                 'Deportes': ['Fitness']
             }
-            subcategorias_db = {}
-            for cat_nombre, sub_nombres in categorias.items():
-                categoria = Category(name=cat_nombre, slug=slugify(cat_nombre))
-                db.session.add(categoria)
+            subcategories_db = {}
+            for cat_name, sub_names in categories_data.items():
+                category = Category(name=cat_name, slug=slugify(cat_name))
+                db.session.add(category)
                 db.session.flush()
-                for sub_nombre in sub_nombres:
-                    subcategoria = Subcategory(name=sub_nombre, slug=slugify(sub_nombre), category=categoria)
-                    db.session.add(subcategoria)
-                    subcategorias_db[sub_nombre] = subcategoria
+                for sub_name in sub_names:
+                    subcategory = Subcategory(name=sub_name, slug=slugify(sub_name), category=category)
+                    db.session.add(subcategory)
+                    db.session.flush()
+                    subcategories_db[sub_name] = subcategory
 
-            subcategorias_list = list(subcategorias_db.values())
+            subcategories_list = list(subcategories_db.values())
             for i in range(1, 51):
-                nombre = f"Producto Ejemplo {i}"
-                precio = 10.0 + (i * 5)
-                desc = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
+                name = f"Producto Ejemplo {i}"
+                price = 10.0 + (i * 5)
+                description = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
                 
-                subcat = subcategorias_list[i % len(subcategorias_list)]
+                subcat = subcategories_list[i % len(subcategories_list)]
                 
                 db.session.add(Product(
-                    name=nombre,
-                    slug=slugify(nombre),
-                    price=precio,
-                    description=desc,
-                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
-                    link=f'https://ejemplo.com/{slugify(nombre)}',
+                    name=name,
+                    slug=slugify(name),
+                    price=price,
+                    description=description,
+                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(name)}',
+                    link=f'https://ejemplo.com/{slugify(name)}',
                     subcategory_id=subcat.id
                 ))
 
-            articulos = [
+            articles_data = [
                 ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
                 ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
             ]
-            for title, content, author, image_text in articulos:
+            for title, content, author, image_text in articles_data:
                 db.session.add(Article(
                     title=title,
                     slug=slugify(title),
@@ -197,14 +194,14 @@ def create_app():
                     image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
                 ))
 
-            redes = [
+            social_links = [
                 ('Facebook', 'https://facebook.com', 'fab fa-facebook-f', 1),
                 ('X', 'https://x.com', 'fab fa-x-twitter', 2),
                 ('Instagram', 'https://instagram.com', 'fab fa-instagram', 3),
                 ('YouTube', 'https://youtube.com', 'fab fa-youtube', 4),
                 ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in', 5),
             ]
-            for name, url, icon, order in redes:
+            for name, url, icon, order in social_links:
                 db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True, order_num=order))
 
             db.session.add(Testimonial(
@@ -217,26 +214,16 @@ def create_app():
             ))
 
             db.session.commit()
-            print("✅ Datos iniciales creados.")
+            print("✅ Initial data created.")
 
-    # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
+    # ----------- LOGIN MANAGER -----------
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
     
-    # -------------------- RUTA DE INICIO PÚBLICA --------------------
-    # CORRECCIÓN: Se actualiza la ruta de inicio para limitar a 12 productos
-    @public_bp.route('/')
-    @public_bp.route('/index')
-    def index():
-        productos = Product.query.order_by(Product.id.desc()).limit(12).all()
-        testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
-        return render_template('public/index.html', productos=productos, testimonios=testimonios)
-
-    # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
     return app
 
-# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# -------------------- MAIN EXECUTION (FOR LOCAL DEVELOPMENT ONLY) --------------------
 if __name__ == "__main__":
     app = create_app()
     app.run(debug=True)

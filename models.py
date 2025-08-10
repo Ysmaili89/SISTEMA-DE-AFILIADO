@@ -1,91 +1,91 @@
-# Importaciones de modelos y extensiones
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime, timezone, date
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# --- Application Models ---
+
+# --- Modelos de la aplicación ---
 class User(UserMixin, db.Model):
-    """Model to represent users."""
-    __tablename__ = 'users'
+    """Modelo para representar a los usuarios."""
+    __tablename__ = 'users'  # nombre en plural para evitar palabra reservada
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
 
     def set_password(self, password):
-        """Generates a secure hash for the password."""
+        """Genera un hash seguro para la contraseña."""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Verifies if the password is correct."""
+        """Verifica si la contraseña es correcta."""
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return f'<User {self.username}>'
 
-# ---
-class Category(db.Model):
-    """Model for product categories."""
-    __tablename__ = 'categories'
+
+class Categoria(db.Model):
+    """Modelo para las categorías de productos."""
+    __tablename__ = 'categoria'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False)
-    subcategories = db.relationship('Subcategory', backref='category', lazy=True, cascade="all, delete-orphan")
+    subcategorias = db.relationship('Subcategoria', backref='categoria', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f'<Category {self.name}>'
+        return f'<Categoria {self.nombre}>'
 
-# ---
-class Subcategory(db.Model):
-    """Model for product subcategories."""
-    __tablename__ = 'subcategories'
+
+class Subcategoria(db.Model):
+    """Modelo para las subcategorías de productos."""
+    __tablename__ = 'subcategoria'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
-    products = db.relationship('Product', backref='subcategory', lazy=True, cascade="all, delete-orphan")
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categoria.id'), nullable=False)
+    productos = db.relationship('Producto', backref='subcategoria', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f'<Subcategory {self.name}>'
+        return f'<Subcategoria {self.nombre}>'
 
-# ---
-class Product(db.Model):
-    """Model for affiliate products."""
-    __tablename__ = 'products'
+
+class Producto(db.Model):
+    """Modelo para los productos afiliados."""
+    __tablename__ = 'producto'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
+    nombre = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(200), unique=True, nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    image = db.Column(db.String(255), nullable=True)
+    precio = db.Column(db.Float, nullable=False)
+    descripcion = db.Column(db.Text, nullable=True)
+    imagen = db.Column(db.String(255), nullable=True)
     link = db.Column(db.String(255), nullable=False)
-    subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategoria.id'), nullable=True)
     external_id = db.Column(db.String(100), unique=True, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    fecha_creacion = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 
     def __repr__(self):
-        return f'<Product {self.name}>'
+        return f'<Producto {self.nombre}>'
 
-# ---
-class Article(db.Model):
-    """Model for blog articles."""
-    __tablename__ = 'articles'
+
+class Articulo(db.Model):
+    """Modelo para los artículos del blog."""
+    __tablename__ = 'articulo'
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
+    titulo = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(200), unique=True, nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    author = db.Column(db.String(100), nullable=False)
-    date = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    image = db.Column(db.String(255), nullable=True)
+    contenido = db.Column(db.Text, nullable=False)
+    autor = db.Column(db.String(100), nullable=False)
+    fecha = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    imagen = db.Column(db.String(255), nullable=True)
 
     def __repr__(self):
-        return f'<Article {self.title}>'
+        return f'<Articulo {self.titulo}>'
 
-# ---
+
 class SyncInfo(db.Model):
-    """Model to store the last sync information."""
+    """Modelo para guardar la información de la última sincronización."""
     __tablename__ = 'sync_info'
     id = db.Column(db.Integer, primary_key=True)
     last_sync_time = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
@@ -95,10 +95,10 @@ class SyncInfo(db.Model):
     def __repr__(self):
         return f'<SyncInfo {self.last_sync_time}>'
 
-# ---
+
 class SocialMediaLink(db.Model):
-    """Model for social media links."""
-    __tablename__ = 'social_media_links'
+    """Modelo para los enlaces a redes sociales."""
+    __tablename__ = 'social_media_link'
     id = db.Column(db.Integer, primary_key=True)
     platform = db.Column(db.String(50), unique=True, nullable=False)
     url = db.Column(db.String(255), nullable=False)
@@ -109,10 +109,10 @@ class SocialMediaLink(db.Model):
     def __repr__(self):
         return f'<SocialMediaLink {self.platform}>'
 
-# ---
+
 class ContactMessage(db.Model):
-    """Model for received contact messages."""
-    __tablename__ = 'contact_messages'
+    """Modelo para los mensajes de contacto recibidos."""
+    __tablename__ = 'contact_message'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)
@@ -129,10 +129,10 @@ class ContactMessage(db.Model):
     def __repr__(self):
         return f'<ContactMessage {self.email} - {self.subject}>'
 
-# ---
+
 class Testimonial(db.Model):
-    """Model for user testimonials."""
-    __tablename__ = 'testimonials'
+    """Modelo para los testimonios de usuarios."""
+    __tablename__ = 'testimonial'
     id = db.Column(db.Integer, primary_key=True)
     author = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
@@ -144,10 +144,10 @@ class Testimonial(db.Model):
     def __repr__(self):
         return f'<Testimonial {self.author}>'
 
-# ---
+
 class Advertisement(db.Model):
-    """Model for advertisements managed by the administrator."""
-    __tablename__ = 'advertisements'
+    """Modelo para los anuncios gestionados por el administrador."""
+    __tablename__ = 'advertisement'
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50), nullable=False)
     title = db.Column(db.String(200), nullable=False)
@@ -156,8 +156,8 @@ class Advertisement(db.Model):
     button_text = db.Column(db.String(100), nullable=True)
     button_url = db.Column(db.String(255), nullable=True)
     image_url = db.Column(db.String(255), nullable=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True)
-    product = db.relationship('Product')
+    product_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=True)
+    product = db.relationship('Producto')
     adsense_client_id = db.Column(db.String(100), nullable=True)
     adsense_slot_id = db.Column(db.String(100), nullable=True)
     start_date = db.Column(db.DateTime, nullable=True)
@@ -166,48 +166,47 @@ class Advertisement(db.Model):
     def __repr__(self):
         return f'<Advertisement {self.title} ({self.type})>'
 
-# ---
-class Affiliate(db.Model):
-    """Model for site affiliates."""
-    __tablename__ = 'affiliates'
+
+class Afiliado(db.Model):
+    """Modelo para los afiliados del sitio."""
+    __tablename__ = 'afiliados'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    nombre = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    referral_link = db.Column(db.String(255), unique=True, nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
+    enlace_referido = db.Column(db.String(255), unique=True, nullable=False)
+    activo = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
-        return f'<Affiliate {self.name}>'
+        return f'<Afiliado {self.nombre}>'
 
-# ---
-class AffiliateStatistic(db.Model):
-    """Model for affiliate statistics."""
-    __tablename__ = 'affiliate_statistics'
+
+class EstadisticaAfiliado(db.Model):
+    """Modelo para las estadísticas de los afiliados."""
+    __tablename__ = 'estadisticas_afiliados'
     id = db.Column(db.Integer, primary_key=True)
-    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliates.id'), nullable=False)
-    date = db.Column(db.Date, default=date.today())
-    clicks = db.Column(db.Integer, default=0)
-    registrations = db.Column(db.Integer, default=0)
-    sales = db.Column(db.Integer, default=0)
-    commission_generated = db.Column(db.Float, default=0.0)
-    is_paid = db.Column(db.Boolean, default=False)
-    
-    affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
+    afiliado_id = db.Column(db.Integer, db.ForeignKey('afiliados.id'), nullable=False)
+    fecha = db.Column(db.Date, default=date.today)
+    clics = db.Column(db.Integer, default=0)
+    registros = db.Column(db.Integer, default=0)
+    ventas = db.Column(db.Integer, default=0)
+    comision_generada = db.Column(db.Float, default=0.0)
+    pagado = db.Column(db.Boolean, default=False)
+
+    afiliado = db.relationship('Afiliado', backref='estadisticas', lazy=True)
 
     def __repr__(self):
-        return f'<AffiliateStatistic Affiliate: {self.affiliate_id}, Date: {self.date}>'
+        return f'<EstadisticaAfiliado Afiliado: {self.afiliado_id}, Fecha: {self.fecha}>'
 
-# ---
+
 class AdsenseConfig(db.Model):
-    """Model for AdSense configuration."""
-    __tablename__ = 'adsense_configs'
+    """Modelo para la configuración de AdSense."""
+    __tablename__ = 'adsense_config'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)
-    adsense_slot_header = db.Column(db.String(50), nullable=True)
-    adsense_slot_sidebar = db.Column(db.String(50), nullable=True)
-    adsense_slot_article_top = db.Column(db.String(50), nullable=True)
-    adsense_slot_article_bottom = db.Column(db.String(50), nullable=True)
-    is_active = db.Column(db.Boolean, default=False, nullable=False)
+    adsense_slot_1 = db.Column(db.String(50), nullable=True)
+    adsense_slot_2 = db.Column(db.String(50), nullable=True)
+    adsense_slot_3 = db.Column(db.String(50), nullable=True)
+    estado = db.Column(db.String(20), default='active', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
 

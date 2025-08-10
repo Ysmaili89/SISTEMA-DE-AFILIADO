@@ -1,38 +1,33 @@
-# Importaciones de bibliotecas estándar
+# Standard library imports
 import os
 from datetime import datetime, date, timezone
 
-# Importaciones de terceros
-from openai import OpenAI
+# Third-party imports
+import openai
 from dotenv import load_dotenv
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
-# Importaciones de aplicaciones locales
-from models import Product, Category, Subcategory, Article, ContactMessage, Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
+# Local application imports
+from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
 from forms import PublicTestimonialForm
 from extensions import db
 
-# Cargar variables de entorno lo antes posible
+# Load environment variables as early as possible
 load_dotenv()
 
-# Definir el plan 'publico'
+# Define the 'publico' Blueprint
 bp = Blueprint('publico', __name__)
 
-# Configurar el cliente OpenAI
+# Configure the OpenAI client
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
-    if os.getenv("OPENAI_API_KEY"):
-        # Se ha corregido el código para inicializar el cliente sin el argumento 'proxies'
-        # que causaba el error en versiones más recientes de la biblioteca.
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    else:
-        client = None
-        print("OPENAI_API_KEY no está configurada. El cliente OpenAI no está inicializado.")
+    openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 except Exception as e:
-    print(f"Error al inicializar el cliente OpenAI en public.py: {e}")
-    client = None
+    print(f"Error initializing OpenAI client in public.py: {e}. Ensure OPENAI_API_KEY is configured.")
+    openai_client = None
+
 # --- Helper functions for chatbot tools ---
 # Estas funciones interactúan con la base de datos y preparan los datos para el chatbot.
 
@@ -43,14 +38,14 @@ def get_all_products_for_chatbot():
     Handles possible database errors.
     """
     try:
-        products = Product.query.all()
+        products = Producto.query.all()
         products_data = []
         for p in products:
             products_data.append({
                 "id": p.id,
-                "name": p.name,
-                "price": p.price,
-                "description": p.description,
+                "name": p.nombre,
+                "price": p.precio,
+                "description": p.descripcion,
                 "link": p.link
             })
         return products_data
@@ -65,13 +60,13 @@ def get_product_by_name_for_chatbot(product_name):
     Returns a dictionary with product details or a message if not found or an error occurs.
     """
     try:
-        product = Product.query.filter(func.lower(Product.name) == func.lower(product_name)).first()
+        product = Producto.query.filter(func.lower(Producto.nombre) == func.lower(product_name)).first()
         if product:
             return {
                 "id": product.id,
-                "name": product.name,
-                "price": product.price,
-                "description": product.description,
+                "name": product.nombre,
+                "price": product.precio,
+                "description": product.descripcion,
                 "link": product.link
             }
         return {"message": f"Product '{product_name}' not found."}
@@ -85,7 +80,7 @@ def get_available_categories():
     Handles possible database errors.
     """
     try:
-        categories = [cat.name for cat in Category.query.all()]
+        categories = [cat.nombre for cat in Categoria.query.all()]
         return {"categories": categories}
     except Exception as e:
         print(f"Error getting available categories: {e}")
@@ -138,10 +133,10 @@ def inject_adsense_config():
     if adsense_config_db:
         return dict(
             adsense_client_id=adsense_config_db.adsense_client_id,
-            adsense_slot_header=adsense_config_db.adsense_slot_header,
-            adsense_slot_sidebar=adsense_config_db.adsense_slot_sidebar,
-            adsense_slot_content=adsense_config_db.adsense_slot_article_top, # Suponiendo que slot_3 se asigna a article_top
-            adsense_slot_footer='' # Asigna una ranura si tienes una, o déjala vacía
+            adsense_slot_header=adsense_config_db.adsense_slot_1,
+            adsense_slot_sidebar=adsense_config_db.adsense_slot_2,
+            adsense_slot_content=adsense_config_db.adsense_slot_3,
+            adsense_slot_footer='' # Asigna un slot si lo tienes, o déjalo vacío
         )
     else:
         return dict(
@@ -152,6 +147,7 @@ def inject_adsense_config():
             adsense_slot_footer=''
         )
 
+
 # --- Public Routes ---
 
 @bp.route('/')
@@ -159,7 +155,7 @@ def index():
     """Renders the main index page with paginated products."""
     page = request.args.get('page', 1, type=int)
     per_page = 9
-    productos_pagination = Product.query.order_by(Product.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    productos_pagination = Producto.query.order_by(Producto.fecha_creacion.desc()).paginate(page=page, per_page=per_page, error_out=False)
     productos = productos_pagination.items
     total_pages = productos_pagination.pages
     return render_template('index.html', productos=productos, page=page, total_pages=total_pages)
@@ -167,7 +163,7 @@ def index():
 @bp.route('/producto/<slug>')
 def product_detail(slug):
     """Renders the detail page for a specific product based on its slug."""
-    producto = Product.query.filter_by(slug=slug).first()
+    producto = Producto.query.filter_by(slug=slug).first()
     if producto:
         return render_template('product_detail.html', product=producto)
     flash('Producto no encontrado.', 'danger')
@@ -176,12 +172,12 @@ def product_detail(slug):
 @bp.route('/categorias')
 def show_categorias():
     """Renders the categories page, displaying all categories and product counts per subcategory."""
-    categorias = Category.query.all()
+    categorias = Categoria.query.all()
     product_counts_raw = db.session.query(
-        Subcategory.id,
-        func.count(Product.id)
-    ).outerjoin(Product, Subcategory.id == Product.subcategory_id) \
-        .group_by(Subcategory.id) \
+        Subcategoria.id,
+        func.count(Producto.id)
+    ).outerjoin(Producto, Subcategoria.id == Producto.subcategoria_id) \
+        .group_by(Subcategoria.id) \
         .all()
     product_counts_dict = {sub_id: count for sub_id, count in product_counts_raw}
     return render_template(
@@ -193,16 +189,15 @@ def show_categorias():
 @bp.route('/productos/<slug>')
 def productos_por_slug(slug):
     """Renders a page displaying products within a specific subcategory based on its slug."""
-    subcat = Subcategory.query.filter_by(slug=slug).first()
+    subcat = Subcategoria.query.filter_by(slug=slug).first()
     if subcat:
         page = request.args.get('page', 1, type=int)
         per_page = 9
-        products_pagination = Product.query.filter_by(subcategory_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
+        products_pagination = Producto.query.filter_by(subcategoria_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
         products_in_subcat = products_pagination.items
         total_pages = products_pagination.pages
         return render_template('productos_por_subcategoria.html',
-                               subcat=subcat,
-                               subcat_name=subcat.name,
+                               subcat_name=subcat.nombre,
                                productos=products_in_subcat,
                                page=page,
                                total_pages=total_pages)
@@ -214,22 +209,22 @@ def guias():
     """Renders the guides page with paginated articles."""
     page = request.args.get('page', 1, type=int)
     per_page = 6
-    articulo_pagination = Article.query.order_by(Article.date.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    articulo_pagination = Articulo.query.order_by(Articulo.fecha.desc()).paginate(page=page, per_page=per_page, error_out=False)
     articulos_db = articulo_pagination.items
     total_pages = articulo_pagination.pages
     articulos = []
     for art in articulos_db:
         # Normalizar la fecha a datetime con timezone
-        fecha_dt = art.date
-        if isinstance(art.date, date) and not isinstance(art.date, datetime):
-            fecha_dt = datetime.combine(art.date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(art.date, datetime) and art.date.tzinfo is None:
-            fecha_dt = art.date.replace(tzinfo=timezone.utc)
+        fecha_dt = art.fecha
+        if isinstance(art.fecha, date) and not isinstance(art.fecha, datetime):
+            fecha_dt = datetime.combine(art.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(art.fecha, datetime) and art.fecha.tzinfo is None:
+            fecha_dt = art.fecha.replace(tzinfo=timezone.utc)
 
         articulos.append({
-            "titulo": art.title,
+            "titulo": art.titulo,
             "slug": art.slug,
-            "contenido": art.content,
+            "contenido": art.contenido,
             "fecha_iso": fecha_dt.strftime("%Y-%m-%d") if fecha_dt else "",
             "fecha_formateada": fecha_dt.strftime("%d %b %Y") if fecha_dt else "",
         })
@@ -238,13 +233,13 @@ def guias():
 @bp.route('/guia/<slug>')
 def guia_detalle(slug):
     """Renders the detail page for a specific article based on its slug."""
-    articulo = Article.query.filter_by(slug=slug).first()
+    articulo = Articulo.query.filter_by(slug=slug).first()
     if articulo:
         # Normalizar la fecha a datetime con timezone antes de pasarla a la plantilla
-        if isinstance(articulo.date, date) and not isinstance(articulo.date, datetime):
-            articulo.date = datetime.combine(articulo.date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(articulo.date, datetime) and articulo.date.tzinfo is None:
-            articulo.date = articulo.date.replace(tzinfo=timezone.utc)
+        if isinstance(articulo.fecha, date) and not isinstance(articulo.fecha, datetime):
+            articulo.fecha = datetime.combine(articulo.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(articulo.fecha, datetime) and articulo.fecha.tzinfo is None:
+            articulo.fecha = articulo.fecha.replace(tzinfo=timezone.utc)
         return render_template('guia_detalle.html', articulo=articulo)
     flash('Artículo no encontrado.', 'danger')
     return redirect(url_for('publico.guias'))
@@ -252,7 +247,6 @@ def guia_detalle(slug):
 
 @bp.route('/acerca-de', methods=['GET', 'POST'])
 def acerca_de():
-    """Renders the about page and handles form submissions."""
     testimonial_form = PublicTestimonialForm()
 
     if testimonial_form.validate_on_submit():
@@ -354,13 +348,13 @@ def sitemap():
         {"loc": base_url + url_for('publico.terms_conditions'), "changefreq": "monthly", "priority": "0.5"},
         {"loc": base_url + url_for('publico.cookie_policy'), "changefreq": "monthly", "priority": "0.5"},
     ]
-    for product in Product.query.all():
+    for product in Producto.query.all():
         urls.append({
             "loc": f"{base_url}{url_for('publico.product_detail', slug=product.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
-    for articulo in Article.query.all():
+    for articulo in Articulo.query.all():
         urls.append({
             "loc": f"{base_url}{url_for('publico.guia_detalle', slug=articulo.slug)}",
             "changefreq": "weekly",
@@ -391,13 +385,13 @@ def search_results():
     total_pages = 1
 
     if query:
-        products_query = Product.query.filter(
-            (Product.name.ilike(f'%{query}%')) |
-            (Product.description.ilike(f'%{query}%'))
+        products_query = Producto.query.filter(
+            (Producto.nombre.ilike(f'%{query}%')) |
+            (Producto.descripcion.ilike(f'%{query}%'))
         )
-        articles_query = Article.query.filter(
-            (Article.title.ilike(f'%{query}%')) |
-            (Article.content.ilike(f'%{query}%'))
+        articles_query = Articulo.query.filter(
+            (Articulo.titulo.ilike(f'%{query}%')) |
+            (Articulo.contenido.ilike(f'%{query}%'))
         )
 
         productos_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
@@ -407,6 +401,7 @@ def search_results():
 
         articulos_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
         articulos_found = articulos_pagination.items
+
         total_articles_pages = articulos_pagination.pages
 
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
@@ -420,35 +415,33 @@ def search_results():
 
 ### Interfaz de usuario de afiliados y rutas API
 
-# ... (all other routes and functions)
-
-@bp.route('/ref/<int:affiliate_id>')
-def register_click(affiliate_id):
+@bp.route('/ref/<int:afiliado_id>')
+def register_click(afiliado_id):
     """
-    Registers a click for an affiliate and redirects to their link.
+    Registra un clic para un afiliado y lo redirige a su enlace.
     """
-    affiliate = Affiliate.query.get_or_404(affiliate_id)
+    afiliado = Afiliado.query.get_or_404(afiliado_id)
 
-    # Searches for a statistic entry for this affiliate for the current day
-    statistic = AffiliateStatistic.query.filter_by(
-        affiliate_id=affiliate.id,
-        date=date.today()
+    # Busca si ya existe una estadística para este afiliado en el día de hoy
+    estadistica = EstadisticaAfiliado.query.filter_by(
+        afiliado_id=afiliado.id,
+        fecha=date.today()
     ).first()
 
-    if statistic:
-        # If it exists, increments the click counter
-        statistic.clicks += 1
+    if estadistica:
+        # Si existe, incrementa el contador de clics
+        estadistica.clics += 1
     else:
-        # If it does not exist, creates a new entry
-        statistic = AffiliateStatistic(
-            affiliate_id=affiliate.id,
-            clicks=1,
-            date=date.today()
+        # Si no existe, crea una nueva entrada
+        estadistica = EstadisticaAfiliado(
+            afiliado_id=afiliado.id,
+            clics=1,
+            fecha=date.today()
         )
-        db.session.add(statistic)
+        db.session.add(estadistica)
 
-    # Saves the changes to the database
+    # Guarda los cambios en la base de datos
     db.session.commit()
 
-    # Redirects the user to the affiliate's link
-    return redirect(affiliate.referral_link)
+    # Redirige al usuario al enlace del afiliado
+    return redirect(afiliado.enlace_referido)

@@ -1,6 +1,6 @@
 import requests
 from app import db
-from models import Product, Subcategory
+from models import Producto, Subcategoria
 from utils import slugify
 
 def fetch_and_update_products_from_external_api(api_url):
@@ -16,13 +16,13 @@ def fetch_and_update_products_from_external_api(api_url):
         simulated_external_products = external_data # Use the actual data from the API
 
     except requests.exceptions.Timeout:
-        raise ConnectionError("The external API request timed out after 10 seconds.")
+        raise ConnectionError("La solicitud a la API externa ha excedido el tiempo de espera (10 segundos).")
     except requests.exceptions.ConnectionError:
-        raise ConnectionError(f"Could not connect to the API URL: {api_url}. Please check the address or your connection.")
+        raise ConnectionError(f"No se pudo conectar a la URL de la API: {api_url}. Verifique la dirección o su conexión.")
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Error fetching data from API: {e}")
+        raise RuntimeError(f"Error al obtener datos de la API: {e}")
     except ValueError as e:
-        raise ValueError(f"Error parsing the API response as JSON: {e}")
+        raise ValueError(f"Error al parsear la respuesta de la API como JSON: {e}")
 
     # --- SIMULATED EXTERNAL API RESPONSE (for demonstration - REMOVE IN PRODUCTION) ---
     # This section is for development/testing without a real API.
@@ -94,41 +94,40 @@ def fetch_and_update_products_from_external_api(api_url):
         ]
 
     updated_count = 0
-    default_subcategory = Subcategory.query.first()
+    default_subcategory = Subcategoria.query.first()
 
     for external_p_data in simulated_external_products:
-        product = Product.query.filter_by(external_id=external_p_data["external_id"]).first()
+        product = Producto.query.filter_by(external_id=external_p_data["external_id"]).first()
         try:
             processed_price = float(external_p_data['external_price'].replace('$', '').replace('€', '').replace(',', ''))
         except ValueError:
-            print(f"Warning: Could not convert price '{external_p_data['external_price']}' for product '{external_p_data['name']}'. Using 0.0.")
+            print(f"Advertencia: No se pudo convertir el precio '{external_p_data['external_price']}' para el producto '{external_p_data['name']}'. Se usará 0.0.")
             processed_price = 0.0
 
-        if product:
-            product.nombre = external_p_data['name']
-            product.slug = slugify(external_p_data['name'])
+        if product: # Corrected: 'Si el producto:' to 'if product:'
+            product.nombre = external_p_data['name'] # Corrected: 'nombre' to 'name' based on external_p_data keys
+            product.slug = slugify(external_p_data['name']) # Corrected: 'nombre' to 'name'
             product.precio = processed_price
             product.descripcion = external_p_data['external_description']
             product.imagen = external_p_data['external_image']
             product.link = external_p_data['external_link']
             updated_count += 1
-        else:
-            if not default_subcategory:
-                print("Warning: No subcategories defined. Cannot add new products from the API.")
+        else: # Corrected: 'más:' to 'else:'
+            if not default_subcategory: # Corrected: 'Si no' to 'if not'
+                print("Advertencia: No hay subcategorías definidas. No se pueden añadir nuevos productos de la API.")
                 continue
 
-            new_product = Product(
-                nombre=external_p_data['name'],
-                slug=slugify(external_p_data['name']),
+            new_product = Producto(
+                nombre=external_p_data['name'], # Corrected: 'número' to 'name'
+                slug=slugify(external_p_data['name']), # Corrected: 'número' to 'name'
                 precio=processed_price,
                 descripcion=external_p_data['external_description'],
                 imagen=external_p_data['external_image'],
-                link=external_p_data['external_link'],
-                subcategoria_id=default_subcategory.id,
+                link=external_p_data['external_link'], # Corrected: 'enlace' to 'link'
+                subcategoria_id=default_subcategory.id, # Using subcategoria_id, as categoria_id is on Categoria, not Producto
                 external_id=external_p_data['external_id']
             )
             db.session.add(new_product)
             updated_count += 1
-
     db.session.commit()
-    return updated_count
+    return updated_count # Corrected: 'Devolver updated_count' to 'return updated_count'

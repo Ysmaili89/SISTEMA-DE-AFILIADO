@@ -1,13 +1,16 @@
 {% extends 'base.html' %}
 
-{% block title %}Productos de {{ subcat.name }} - Afiliados Online{% endblock %}
+{% block title %}Productos de {{ subcat_name }} - Afiliados Online{% endblock %}
+
+{% block meta_description %}
+    Explora los mejores productos de {{ subcat_name }} con reseñas, comparativas, precios actualizados y enlaces directos de compra.
+{% endblock %}
 
 {% block meta_keywords %}
-    productos {{ subcat.name | lower }}, comprar {{ subcat.name | lower }}, análisis {{ subcat.name | lower }}, comparativas {{ subcat.name | lower }}, reseñas
+    productos {{ subcat_name | lower }}, comprar {{ subcat_name | lower }}, análisis {{ subcat_name | lower }}, comparativas {{ subcat_name | lower }}, reseñas
 {% endblock %}
 
 {% block head %}
-
   {{ super() }}
   {% if not productos %}
     <meta name="robots" content="noindex,nofollow">
@@ -17,8 +20,8 @@
 {% block content %}
 <main class="container my-5" role="main" aria-labelledby="page-title">
   <header class="mb-4">
-    <h1 id="page-title" class="mb-2">Productos en {{ subcat.name }}</h1>
-    <p class="lead text-secondary">Encuentra las mejores opciones en la categoría **{{ subcat.name }}**: recomendaciones, precios y enlaces verificados. </p>
+    <h1 id="page-title" class="mb-2">Productos en {{ subcat_name }}</h1>
+    <p class="lead text-secondary">Encuentra las mejores opciones en la categoría **{{ subcat_name }}**: recomendaciones, precios y enlaces verificados. </p>
   </header>
 
   {% if productos %}
@@ -54,19 +57,19 @@
   <nav aria-label="Paginación de productos en {{ subcat_name }}">
     <ul class="pagination justify-content-center">
       <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=page-1) }}" aria-label="Página anterior">
+        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=page-1) }}" aria-label="Página anterior">
           <span aria-hidden="true">&laquo;</span>
         </a>
       </li>
 
       {% for pagenum in range(1, total_pages + 1) %}
       <li class="page-item {% if pagenum == page %}active{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=pagenum) }}" aria-label="Página {{ pagenum }}">{{ pagenum }}</a>
+        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=pagenum) }}" aria-label="Página {{ pagenum }}">{{ pagenum }}</a>
       </li>
       {% endfor %}
 
       <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=page+1) }}" aria-label="Página siguiente">
+        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=page+1) }}" aria-label="Página siguiente">
           <span aria-hidden="true">&raquo;</span>
         </a>
       </li>
@@ -80,7 +83,7 @@
   </div>
   {% endif %}
 
-  <div class="text-center mt-5">
+  <div class="mt-5 text-center">
     <a href="{{ url_for('publico.show_categorias') }}" class="btn btn-secondary btn-lg" aria-label="Volver a la página de categorías">
       <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Volver a Categorías
     </a>

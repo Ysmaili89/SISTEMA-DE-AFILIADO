@@ -1,198 +1,199 @@
 # C:\Users\joran\OneDrive\data\Documentos\LMSGI\afiliados_app\routes\api.py
 
 from flask import Blueprint, jsonify
-from models import Product, Category, Subcategory, Article, Testimonial
+from models import Producto, Categoria, Subcategoria, Articulo, Testimonial # Asegúrate de importar el modelo Testimonial
 from sqlalchemy.orm import joinedload
 
-# Defines the Blueprint for the API with the /api prefix
+# Se define el Blueprint para la API con el prefijo /api
 bp = Blueprint('api', __name__, url_prefix='/api')
 
-# ----------- PRODUCT ROUTES -----------
+# ----------- RUTAS DE PRODUCTOS -----------
 
-# Get all products
-@bp.route('/products', methods=['GET'])
-def api_products():
-    products = Product.query.all()
-    products_data = [{
+# Obtener todos los productos
+@bp.route('/productos', methods=['GET'])
+def api_productos():
+    productos = Producto.query.all()
+    productos_data = [{
         "id": p.id,
-        "name": p.name,
+        "nombre": p.nombre,
         "slug": p.slug,
-        "price": p.price,
-        "description": p.description,
-        "image": p.image,
+        "precio": p.precio,
+        "descripcion": p.descripcion,
+        "imagen": p.imagen,
         "link": p.link,
-        "subcategory_id": p.subcategory_id,
+        "subcategoria_id": p.subcategoria_id,
         "external_id": p.external_id,
-        "created_at": p.created_at.isoformat() if p.created_at else None,
-        "updated_at": p.updated_at.isoformat() if p.updated_at else None
-    } for p in products]
-    return jsonify(products_data)
+        "fecha_creacion": p.fecha_creacion.isoformat() if p.fecha_creacion else None,
+        "fecha_actualizacion": p.fecha_actualizacion.isoformat() if p.fecha_actualizacion else None
+    } for p in productos]
+    return jsonify(productos_data)
 
-# Get a product by ID
-@bp.route('/products/<int:product_id>', methods=['GET'])
-def api_product_by_id(product_id):
-    product = Product.query.get(product_id)
-    if product:
+# Obtener un producto por ID
+@bp.route('/productos/<int:producto_id>', methods=['GET'])
+def api_producto_por_id(producto_id):
+    producto = Producto.query.get(producto_id)
+    if producto:
         return jsonify({
-            "id": product.id,
-            "name": product.name,
-            "slug": product.slug,
-            "price": product.price,
-            "description": product.description,
-            "image": product.image,
-            "link": product.link,
-            "subcategory_id": product.subcategory_id,
-            "external_id": product.external_id,
-            "created_at": product.created_at.isoformat() if product.created_at else None,
-            "updated_at": product.updated_at.isoformat() if product.updated_at else None
+            "id": producto.id,
+            "nombre": producto.nombre,
+            "slug": producto.slug,
+            "precio": producto.precio,
+            "descripcion": producto.descripcion,
+            "imagen": producto.imagen,
+            "link": producto.link,
+            "subcategoria_id": producto.subcategoria_id,
+            "external_id": producto.external_id,
+            "fecha_creacion": producto.fecha_creacion.isoformat() if producto.fecha_creacion else None,
+            "fecha_actualizacion": producto.fecha_actualizacion.isoformat() if producto.fecha_actualizacion else None
         })
-    return jsonify({"message": "Product not found"}), 404
+    return jsonify({"mensaje": "Producto no encontrado"}), 404
 
-# ----------- CATEGORY ROUTES -----------
+# ----------- RUTAS DE CATEGORÍAS -----------
 
-# Get all categories
-@bp.route('/categories', methods=['GET'])
-def api_categories():
-    categories = Category.query.all()
-    categories_data = [{
+# Obtener todas las categorías
+@bp.route('/categorias', methods=['GET'])
+def api_categorias():
+    categorias = Categoria.query.all()
+    categorias_data = [{
         "id": c.id,
-        "name": c.name,
+        "nombre": c.nombre,
         "slug": c.slug
-    } for c in categories]
-    return jsonify(categories_data)
+    } for c in categorias]
+    return jsonify(categorias_data)
 
-# Get a category by ID with its subcategories
-@bp.route('/categories/<int:category_id>', methods=['GET'])
-def api_category_by_id(category_id):
-    category = Category.query.options(joinedload(Category.subcategories)).get(category_id)
-    if category:
-        subcategories_data = [{
+# Obtener una categoría por ID con sus subcategorías
+@bp.route('/categorias/<int:categoria_id>', methods=['GET'])
+def api_categoria_por_id(categoria_id):
+    # Usamos joinedload para prevenir el problema de N+1 consultas para las subcategorías
+    categoria = Categoria.query.options(joinedload(Categoria.subcategorias)).get(categoria_id)
+    if categoria:
+        subcategorias_data = [{
             "id": sc.id,
-            "name": sc.name,
+            "nombre": sc.nombre,
             "slug": sc.slug,
-            "category_id": sc.category_id
-        } for sc in category.subcategories]
+            "categoria_id": sc.categoria_id
+        } for sc in categoria.subcategorias]
         return jsonify({
-            "id": category.id,
-            "name": category.name,
-            "slug": category.slug,
-            "subcategories": subcategories_data
+            "id": categoria.id,
+            "nombre": categoria.nombre,
+            "slug": categoria.slug,
+            "subcategorias": subcategorias_data
         })
-    return jsonify({"message": "Category not found"}), 404
+    return jsonify({"mensaje": "Categoría no encontrada"}), 404
 
-# ----------- SUBCATEGORY ROUTES -----------
+# ----------- RUTAS DE SUBCATEGORÍAS -----------
 
-# Get all subcategories
-@bp.route('/subcategories', methods=['GET'])
-def api_subcategories():
-    subcategories = Subcategory.query.all()
-    subcategories_data = [{
+# Obtener todas las subcategorías
+@bp.route('/subcategorias', methods=['GET'])
+def api_subcategorias():
+    subcategorias = Subcategoria.query.all()
+    subcategorias_data = [{
         "id": sc.id,
-        "name": sc.name,
+        "nombre": sc.nombre,
         "slug": sc.slug,
-        "category_id": sc.category_id
-    } for sc in subcategories]
-    return jsonify(subcategories_data)
+        "categoria_id": sc.categoria_id
+    } for sc in subcategorias]
+    return jsonify(subcategorias_data)
 
-# Get a subcategory by ID with its products
-@bp.route('/subcategories/<int:subcategory_id>', methods=['GET'])
-def api_subcategory_by_id(subcategory_id):
-    subcategory = Subcategory.query.options(joinedload(Subcategory.products)).get(subcategory_id)
-    if subcategory:
-        products_data = [{
+# Obtener una subcategoría por ID con sus productos
+@bp.route('/subcategorias/<int:subcategoria_id>', methods=['GET'])
+def api_subcategoria_por_id(subcategoria_id):
+    subcategoria = Subcategoria.query.options(joinedload(Subcategoria.productos)).get(subcategoria_id)
+    if subcategoria:
+        productos_data = [{
             "id": p.id,
-            "name": p.name,
+            "nombre": p.nombre,
             "slug": p.slug,
-            "price": p.price,
-            "image": p.image,
+            "precio": p.precio,
+            "imagen": p.imagen,
             "link": p.link
-        } for p in subcategory.products]
+        } for p in subcategoria.productos]
         return jsonify({
-            "id": subcategory.id,
-            "name": subcategory.name,
-            "slug": subcategory.slug,
-            "category_id": subcategory.category_id,
-            "products": products_data
+            "id": subcategoria.id,
+            "nombre": subcategoria.nombre,
+            "slug": subcategoria.slug,
+            "categoria_id": subcategoria.categoria_id,
+            "productos": productos_data
         })
-    return jsonify({"message": "Subcategory not found"}), 404
+    return jsonify({"mensaje": "Subcategoría no encontrada"}), 404
 
-# ----------- ARTICLE ROUTES -----------
+# ----------- RUTAS DE ARTÍCULOS -----------
 
-# Get all articles
-@bp.route('/articles', methods=['GET'])
-def api_articles():
-    articles = Article.query.all()
-    articles_data = [{
+# Obtener todos los artículos
+@bp.route('/articulos', methods=['GET'])
+def api_articulos():
+    articulos = Articulo.query.all()
+    articulos_data = [{
         "id": a.id,
-        "title": a.title,
+        "titulo": a.titulo,
         "slug": a.slug,
-        "content": a.content,
-        "author": a.author,
-        "date_posted": a.date_posted.isoformat() if a.date_posted else None,
-        "image": a.image
-    } for a in articles]
-    return jsonify(articles_data)
+        "contenido": a.contenido,
+        "autor": a.autor,
+        "fecha": a.fecha.isoformat() if a.fecha else None,
+        "imagen": a.imagen
+    } for a in articulos]
+    return jsonify(articulos_data)
 
-# Get an article by ID
-@bp.route('/articles/<int:article_id>', methods=['GET'])
-def api_article_by_id(article_id):
-    article = Article.query.get(article_id)
-    if article:
+# Obtener un artículo por ID
+@bp.route('/articulos/<int:articulo_id>', methods=['GET'])
+def api_articulo_por_id(articulo_id):
+    articulo = Articulo.query.get(articulo_id)
+    if articulo:
         return jsonify({
-            "id": article.id,
-            "title": article.title,
-            "slug": article.slug,
-            "content": article.content,
-            "author": article.author,
-            "date_posted": article.date_posted.isoformat() if article.date_posted else None,
-            "image": article.image
+            "id": articulo.id,
+            "titulo": articulo.titulo,
+            "slug": articulo.slug,
+            "contenido": articulo.contenido,
+            "autor": articulo.autor,
+            "fecha": articulo.fecha.isoformat() if articulo.fecha else None,
+            "imagen": articulo.imagen
         })
-    return jsonify({"message": "Article not found"}), 404
+    return jsonify({"mensaje": "Artículo no encontrado"}), 404
     
-# Get an article by its slug
-@bp.route('/articles/slug/<string:article_slug>', methods=['GET'])
-def api_article_by_slug(article_slug):
-    article = Article.query.filter_by(slug=article_slug).first()
-    if article:
+# Nuevo: Obtener un artículo por su slug
+@bp.route('/articulos/slug/<string:articulo_slug>', methods=['GET'])
+def api_articulo_por_slug(articulo_slug):
+    articulo = Articulo.query.filter_by(slug=articulo_slug).first()
+    if articulo:
         return jsonify({
-            "id": article.id,
-            "title": article.title,
-            "slug": article.slug,
-            "content": article.content,
-            "author": article.author,
-            "date_posted": article.date_posted.isoformat() if article.date_posted else None,
-            "image": article.image
+            "id": articulo.id,
+            "titulo": articulo.titulo,
+            "slug": articulo.slug,
+            "contenido": articulo.contenido,
+            "autor": articulo.autor,
+            "fecha": articulo.fecha.isoformat() if articulo.fecha else None,
+            "imagen": articulo.imagen
         })
-    return jsonify({"message": "Article not found"}), 404
+    return jsonify({"mensaje": "Artículo no encontrado"}), 404
 
-# ----------- TESTIMONIAL ROUTES -----------
+# ----------- RUTAS DE TESTIMONIOS -----------
 
-# Get all testimonials
-@bp.route('/testimonials', methods=['GET'])
-def api_testimonials():
-    # Get only visible testimonials, ordered by date
-    testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
-    testimonials_data = [{
+# Nuevo: Obtener todos los testimonios
+@bp.route('/testimonios', methods=['GET'])
+def api_testimonios():
+    # Obtener solo los testimonios visibles, ordenados por fecha
+    testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
+    testimonios_data = [{
         "id": t.id,
         "author": t.author,
         "content": t.content,
         "date_posted": t.date_posted.isoformat() if t.date_posted else None,
         "likes": t.likes,
         "dislikes": t.dislikes
-    } for t in testimonials]
-    return jsonify(testimonials_data)
+    } for t in testimonios]
+    return jsonify(testimonios_data)
 
-# Get a testimonial by ID
-@bp.route('/testimonials/<int:testimonial_id>', methods=['GET'])
-def api_testimonial_by_id(testimonial_id):
-    testimonial = Testimonial.query.get(testimonial_id)
-    if testimonial and testimonial.is_visible:
+# Nuevo: Obtener un testimonio por ID
+@bp.route('/testimonios/<int:testimonio_id>', methods=['GET'])
+def api_testimonio_por_id(testimonio_id):
+    testimonio = Testimonial.query.get(testimonio_id)
+    if testimonio and testimonio.is_visible:
         return jsonify({
-            "id": testimonial.id,
-            "author": testimonial.author,
-            "content": testimonial.content,
-            "date_posted": testimonial.date_posted.isoformat() if testimonial.date_posted else None,
-            "likes": testimonial.likes,
-            "dislikes": testimonial.dislikes
+            "id": testimonio.id,
+            "author": testimonio.author,
+            "content": testimonio.content,
+            "date_posted": testimonio.date_posted.isoformat() if testimonio.date_posted else None,
+            "likes": testimonio.likes,
+            "dislikes": testimonio.dislikes
         })
-    return jsonify({"message": "Testimonial not found or not visible"}), 404
+    return jsonify({"mensaje": "Testimonio no encontrado o no visible"}), 404

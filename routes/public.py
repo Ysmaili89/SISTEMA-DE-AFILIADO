@@ -22,14 +22,17 @@ bp = Blueprint('publico', __name__)
 
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
+# Create an OpenAI client instance.
+# Note: The `proxies` parameter is not a valid argument for the current version of the OpenAI client.
 try:
-    # La versión más reciente de la biblioteca de OpenAI no acepta el argumento 'proxies'.
-    # Si necesitas usar proxies, configúralos a través de variables de entorno del sistema operativo.
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    if os.getenv("OPENAI_API_KEY"):
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    else:
+        client = None
+        print("OPENAI_API_KEY no está configurada. El cliente OpenAI no está inicializado.")
 except Exception as e:
-    # Capturar el error para depuración
-    print(f"Error al inicializar el cliente OpenAI en public.py: {e}. Asegúrese de que OPENAI_API_KEY esté configurado.")
-    openai_client = None
+    print(f"Error al inicializar el cliente OpenAI en public.py: {e}")
+    client = None
 
 # --- Helper functions for chatbot tools ---
 # Estas funciones interactúan con la base de datos y preparan los datos para el chatbot.
@@ -200,6 +203,7 @@ def productos_por_slug(slug):
         products_in_subcat = products_pagination.items
         total_pages = products_pagination.pages
         return render_template('productos_por_subcategoria.html',
+                               subcat=subcat,
                                subcat_name=subcat.nombre,
                                productos=products_in_subcat,
                                page=page,
@@ -404,7 +408,6 @@ def search_results():
 
         articulos_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
         articulos_found = articulos_pagination.items
-
         total_articles_pages = articulos_pagination.pages
 
         total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
@@ -447,4 +450,4 @@ def register_click(afiliado_id):
     db.session.commit()
 
     # Redirige al usuario al enlace del afiliado
-    return redirect(afiliado.enlace_referido)
+    return redirect(afiliado.referral_link)

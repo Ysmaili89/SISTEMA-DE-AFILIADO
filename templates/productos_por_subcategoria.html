@@ -57,19 +57,19 @@
   <nav aria-label="Paginación de productos en {{ subcat_name }}">
     <ul class="pagination justify-content-center">
       <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=page-1) }}" aria-label="Página anterior">
+        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=page-1) }}" aria-label="Página anterior">
           <span aria-hidden="true">&laquo;</span>
         </a>
       </li>
 
       {% for pagenum in range(1, total_pages + 1) %}
       <li class="page-item {% if pagenum == page %}active{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=pagenum) }}" aria-label="Página {{ pagenum }}">{{ pagenum }}</a>
+        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=pagenum) }}" aria-label="Página {{ pagenum }}">{{ pagenum }}</a>
       </li>
       {% endfor %}
 
       <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-        <a class="page-link" href="{{ url_for('publico.productos_por_subcategoria', subcat_name=subcat_name, page=page+1) }}" aria-label="Página siguiente">
+        <a class="page-link" href="{{ url_for('publico.productos_por_slug', slug=subcat.slug, page=page+1) }}" aria-label="Página siguiente">
           <span aria-hidden="true">&raquo;</span>
         </a>
       </li>
@@ -83,7 +83,7 @@
   </div>
   {% endif %}
 
-  <div class="mt-5 text-center">
+  <div class="text-center mt-5">
     <a href="{{ url_for('publico.show_categorias') }}" class="btn btn-secondary btn-lg" aria-label="Volver a la página de categorías">
       <i class="fas fa-arrow-left me-2" aria-hidden="true"></i>Volver a Categorías
     </a>

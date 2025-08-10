@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 # Importaciones de aplicaciones locales
-from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+from models import Product, Category, Subcategory, Article, ContactMessage, Testimonial, Advertisement, Afiliado, AffiliateStatistic, AdsenseConfig
 from forms import PublicTestimonialForm
 from extensions import db
 
@@ -22,8 +22,6 @@ bp = Blueprint('publico', __name__)
 
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
-# Create an OpenAI client instance.
-# Note: The `proxies` parameter is not a valid argument for the current version of the OpenAI client.
 try:
     if os.getenv("OPENAI_API_KEY"):
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -44,14 +42,14 @@ def get_all_products_for_chatbot():
     Handles possible database errors.
     """
     try:
-        products = Producto.query.all()
+        products = Product.query.all()
         products_data = []
         for p in products:
             products_data.append({
                 "id": p.id,
-                "name": p.nombre,
-                "price": p.precio,
-                "description": p.descripcion,
+                "name": p.name,
+                "price": p.price,
+                "description": p.description,
                 "link": p.link
             })
         return products_data
@@ -66,13 +64,13 @@ def get_product_by_name_for_chatbot(product_name):
     Returns a dictionary with product details or a message if not found or an error occurs.
     """
     try:
-        product = Producto.query.filter(func.lower(Producto.nombre) == func.lower(product_name)).first()
+        product = Product.query.filter(func.lower(Product.name) == func.lower(product_name)).first()
         if product:
             return {
                 "id": product.id,
-                "name": product.nombre,
-                "price": product.precio,
-                "description": product.descripcion,
+                "name": product.name,
+                "price": product.price,
+                "description": product.description,
                 "link": product.link
             }
         return {"message": f"Product '{product_name}' not found."}
@@ -86,7 +84,7 @@ def get_available_categories():
     Handles possible database errors.
     """
     try:
-        categories = [cat.nombre for cat in Categoria.query.all()]
+        categories = [cat.name for cat in Category.query.all()]
         return {"categories": categories}
     except Exception as e:
         print(f"Error getting available categories: {e}")
@@ -161,7 +159,7 @@ def index():
     """Renders the main index page with paginated products."""
     page = request.args.get('page', 1, type=int)
     per_page = 9
-    productos_pagination = Producto.query.order_by(Producto.fecha_creacion.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    productos_pagination = Product.query.order_by(Product.creation_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
     productos = productos_pagination.items
     total_pages = productos_pagination.pages
     return render_template('index.html', productos=productos, page=page, total_pages=total_pages)
@@ -169,7 +167,7 @@ def index():
 @bp.route('/producto/<slug>')
 def product_detail(slug):
     """Renders the detail page for a specific product based on its slug."""
-    producto = Producto.query.filter_by(slug=slug).first()
+    producto = Product.query.filter_by(slug=slug).first()
     if producto:
         return render_template('product_detail.html', product=producto)
     flash('Producto no encontrado.', 'danger')
@@ -178,12 +176,12 @@ def product_detail(slug):
 @bp.route('/categorias')
 def show_categorias():
     """Renders the categories page, displaying all categories and product counts per subcategory."""
-    categorias = Categoria.query.all()
+    categorias = Category.query.all()
     product_counts_raw = db.session.query(
-        Subcategoria.id,
-        func.count(Producto.id)
-    ).outerjoin(Producto, Subcategoria.id == Producto.subcategoria_id) \
-        .group_by(Subcategoria.id) \
+        Subcategory.id,
+        func.count(Product.id)
+    ).outerjoin(Product, Subcategory.id == Product.subcategory_id) \
+        .group_by(Subcategory.id) \
         .all()
     product_counts_dict = {sub_id: count for sub_id, count in product_counts_raw}
     return render_template(
@@ -195,16 +193,16 @@ def show_categorias():
 @bp.route('/productos/<slug>')
 def productos_por_slug(slug):
     """Renders a page displaying products within a specific subcategory based on its slug."""
-    subcat = Subcategoria.query.filter_by(slug=slug).first()
+    subcat = Subcategory.query.filter_by(slug=slug).first()
     if subcat:
         page = request.args.get('page', 1, type=int)
         per_page = 9
-        products_pagination = Producto.query.filter_by(subcategoria_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
+        products_pagination = Product.query.filter_by(subcategory_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
         products_in_subcat = products_pagination.items
         total_pages = products_pagination.pages
         return render_template('productos_por_subcategoria.html',
                                subcat=subcat,
-                               subcat_name=subcat.nombre,
+                               subcat_name=subcat.name,
                                productos=products_in_subcat,
                                page=page,
                                total_pages=total_pages)
@@ -216,22 +214,22 @@ def guias():
     """Renders the guides page with paginated articles."""
     page = request.args.get('page', 1, type=int)
     per_page = 6
-    articulo_pagination = Articulo.query.order_by(Articulo.fecha.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    articulo_pagination = Article.query.order_by(Article.date.desc()).paginate(page=page, per_page=per_page, error_out=False)
     articulos_db = articulo_pagination.items
     total_pages = articulo_pagination.pages
     articulos = []
     for art in articulos_db:
         # Normalizar la fecha a datetime con timezone
-        fecha_dt = art.fecha
-        if isinstance(art.fecha, date) and not isinstance(art.fecha, datetime):
-            fecha_dt = datetime.combine(art.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(art.fecha, datetime) and art.fecha.tzinfo is None:
-            fecha_dt = art.fecha.replace(tzinfo=timezone.utc)
+        fecha_dt = art.date
+        if isinstance(art.date, date) and not isinstance(art.date, datetime):
+            fecha_dt = datetime.combine(art.date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(art.date, datetime) and art.date.tzinfo is None:
+            fecha_dt = art.date.replace(tzinfo=timezone.utc)
 
         articulos.append({
-            "titulo": art.titulo,
+            "titulo": art.title,
             "slug": art.slug,
-            "contenido": art.contenido,
+            "contenido": art.content,
             "fecha_iso": fecha_dt.strftime("%Y-%m-%d") if fecha_dt else "",
             "fecha_formateada": fecha_dt.strftime("%d %b %Y") if fecha_dt else "",
         })
@@ -240,13 +238,13 @@ def guias():
 @bp.route('/guia/<slug>')
 def guia_detalle(slug):
     """Renders the detail page for a specific article based on its slug."""
-    articulo = Articulo.query.filter_by(slug=slug).first()
+    articulo = Article.query.filter_by(slug=slug).first()
     if articulo:
         # Normalizar la fecha a datetime con timezone antes de pasarla a la plantilla
-        if isinstance(articulo.fecha, date) and not isinstance(articulo.fecha, datetime):
-            articulo.fecha = datetime.combine(articulo.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(articulo.fecha, datetime) and articulo.fecha.tzinfo is None:
-            articulo.fecha = articulo.fecha.replace(tzinfo=timezone.utc)
+        if isinstance(articulo.date, date) and not isinstance(articulo.date, datetime):
+            articulo.date = datetime.combine(articulo.date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(articulo.date, datetime) and articulo.date.tzinfo is None:
+            articulo.date = articulo.date.replace(tzinfo=timezone.utc)
         return render_template('guia_detalle.html', articulo=articulo)
     flash('Artículo no encontrado.', 'danger')
     return redirect(url_for('publico.guias'))
@@ -254,6 +252,7 @@ def guia_detalle(slug):
 
 @bp.route('/acerca-de', methods=['GET', 'POST'])
 def acerca_de():
+    """Renders the about page and handles form submissions."""
     testimonial_form = PublicTestimonialForm()
 
     if testimonial_form.validate_on_submit():
@@ -355,13 +354,13 @@ def sitemap():
         {"loc": base_url + url_for('publico.terms_conditions'), "changefreq": "monthly", "priority": "0.5"},
         {"loc": base_url + url_for('publico.cookie_policy'), "changefreq": "monthly", "priority": "0.5"},
     ]
-    for product in Producto.query.all():
+    for product in Product.query.all():
         urls.append({
             "loc": f"{base_url}{url_for('publico.product_detail', slug=product.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
-    for articulo in Articulo.query.all():
+    for articulo in Article.query.all():
         urls.append({
             "loc": f"{base_url}{url_for('publico.guia_detalle', slug=articulo.slug)}",
             "changefreq": "weekly",
@@ -392,13 +391,13 @@ def search_results():
     total_pages = 1
 
     if query:
-        products_query = Producto.query.filter(
-            (Producto.nombre.ilike(f'%{query}%')) |
-            (Producto.descripcion.ilike(f'%{query}%'))
+        products_query = Product.query.filter(
+            (Product.name.ilike(f'%{query}%')) |
+            (Product.description.ilike(f'%{query}%'))
         )
-        articles_query = Articulo.query.filter(
-            (Articulo.titulo.ilike(f'%{query}%')) |
-            (Articulo.contenido.ilike(f'%{query}%'))
+        articles_query = Article.query.filter(
+            (Article.title.ilike(f'%{query}%')) |
+            (Article.content.ilike(f'%{query}%'))
         )
 
         productos_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
@@ -429,20 +428,20 @@ def register_click(afiliado_id):
     afiliado = Afiliado.query.get_or_404(afiliado_id)
 
     # Busca si ya existe una estadística para este afiliado en el día de hoy
-    estadistica = EstadisticaAfiliado.query.filter_by(
-        afiliado_id=afiliado.id,
-        fecha=date.today()
+    estadistica = AffiliateStatistic.query.filter_by(
+        affiliate_id=afiliado.id,
+        date=date.today()
     ).first()
 
     if estadistica:
         # Si existe, incrementa el contador de clics
-        estadistica.clics += 1
+        estadistica.clicks += 1
     else:
         # Si no existe, crea una nueva entrada
-        estadistica = EstadisticaAfiliado(
-            afiliado_id=afiliado.id,
-            clics=1,
-            fecha=date.today()
+        estadistica = AffiliateStatistic(
+            affiliate_id=afiliado.id,
+            clicks=1,
+            date=date.today()
         )
         db.session.add(estadistica)
 

@@ -1,8 +1,8 @@
+# Importaciones de modelos y extensiones
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime, timezone, date
 from werkzeug.security import generate_password_hash, check_password_hash
-
 
 # --- Application Models ---
 class User(UserMixin, db.Model):
@@ -180,27 +180,26 @@ class Affiliate(db.Model):
         return f'<Affiliate {self.name}>'
 
 # ---
-class EstadísticaAfiliada(db.Model):
-    """Modelo para estadísticas de afiliados."""
+class AffiliateStatistic(db.Model):
+    """Model for affiliate statistics."""
     __tablename__ = 'affiliate_statistics'
     id = db.Column(db.Integer, primary_key=True)
     affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliates.id'), nullable=False)
-    fecha = db.Column(db.Date, default=date.today())
-    clics = db.Column(db.Integer, default=0)
-    registros = db.Column(db.Integer, default=0)
-    ventas = db.Column(db.Integer, default=0)
+    date = db.Column(db.Date, default=date.today())
+    clicks = db.Column(db.Integer, default=0)
+    registrations = db.Column(db.Integer, default=0)
+    sales = db.Column(db.Integer, default=0)
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
-
-    # Corrected line: 'Affiliate' instead of 'Afiliado'
-    affiliate = db.relationship('Affiliate', backref='estadísticas', lazy=True)
+    
+    affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
 
     def __repr__(self):
-        return f'<AffiliateStatistic Afiliado: {self.affiliate_id}, Fecha: {self.date}>'
+        return f'<AffiliateStatistic Affiliate: {self.affiliate_id}, Date: {self.date}>'
 
 # ---
 class AdsenseConfig(db.Model):
-    """Modelo para la configuración de AdSense."""
+    """Model for AdSense configuration."""
     __tablename__ = 'adsense_configs'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)

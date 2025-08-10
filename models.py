@@ -180,23 +180,23 @@ class Affiliate(db.Model):
         return f'<Affiliate {self.name}>'
 
 # ---
-class AffiliateStatistic(db.Model):
-    """Model for affiliate statistics."""
+class EstadísticaAfiliada(db.Model):
+    """Modelo para estadísticas de afiliados."""
     __tablename__ = 'affiliate_statistics'
     id = db.Column(db.Integer, primary_key=True)
     affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliates.id'), nullable=False)
-    date = db.Column(db.Date, default=date.today())
-    clicks = db.Column(db.Integer, default=0)
-    registrations = db.Column(db.Integer, default=0)
-    sales = db.Column(db.Integer, default=0)
+    fecha = db.Column(db.Date, default=date.today())
+    clics = db.Column(db.Integer, default=0)
+    registros = db.Column(db.Integer, default=0)
+    ventas = db.Column(db.Integer, default=0)
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
 
-    # CORRECCIÓN: 'backref' debe referirse al nombre de la clase, 'Affiliate', no 'Afiliado'.
-    affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
+    # Corrected line: 'Affiliate' instead of 'Afiliado'
+    affiliate = db.relationship('Affiliate', backref='estadísticas', lazy=True)
 
     def __repr__(self):
-        return f'<AffiliateStatistic Affiliate: {self.affiliate_id}, Date: {self.date}>'
+        return f'<AffiliateStatistic Afiliado: {self.affiliate_id}, Fecha: {self.date}>'
 
 # ---
 class AdsenseConfig(db.Model):

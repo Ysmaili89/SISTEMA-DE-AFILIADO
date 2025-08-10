@@ -1,16 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}Productos de {{ subcat_name }} - Afiliados Online{% endblock %}
-
-{% block meta_description %}
-    Explora los mejores productos de {{ subcat_name }} con reseñas, comparativas, precios actualizados y enlaces directos de compra.
-{% endblock %}
+{% block title %}Productos de {{ subcat.name }} - Afiliados Online{% endblock %}
 
 {% block meta_keywords %}
-    productos {{ subcat_name | lower }}, comprar {{ subcat_name | lower }}, análisis {{ subcat_name | lower }}, comparativas {{ subcat_name | lower }}, reseñas
+    productos {{ subcat.name | lower }}, comprar {{ subcat.name | lower }}, análisis {{ subcat.name | lower }}, comparativas {{ subcat.name | lower }}, reseñas
 {% endblock %}
 
 {% block head %}
+
   {{ super() }}
   {% if not productos %}
     <meta name="robots" content="noindex,nofollow">
@@ -20,8 +17,8 @@
 {% block content %}
 <main class="container my-5" role="main" aria-labelledby="page-title">
   <header class="mb-4">
-    <h1 id="page-title" class="mb-2">Productos en {{ subcat_name }}</h1>
-    <p class="lead text-secondary">Encuentra las mejores opciones en la categoría **{{ subcat_name }}**: recomendaciones, precios y enlaces verificados. </p>
+    <h1 id="page-title" class="mb-2">Productos en {{ subcat.name }}</h1>
+    <p class="lead text-secondary">Encuentra las mejores opciones en la categoría **{{ subcat.name }}**: recomendaciones, precios y enlaces verificados. </p>
   </header>
 
   {% if productos %}

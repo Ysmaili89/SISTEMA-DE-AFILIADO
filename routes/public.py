@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 # Importaciones de aplicaciones locales
-from models import Product, Category, Subcategory, Article, ContactMessage, Testimonial, Advertisement, Afiliado, AffiliateStatistic, AdsenseConfig
+from models import Product, Category, Subcategory, Article, ContactMessage, Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
 from forms import PublicTestimonialForm
 from extensions import db
 
@@ -421,33 +421,33 @@ def search_results():
 
 # ... (all other routes and functions)
 
-@bp.route('/ref/<int:afiliado_id>')
-def register_click(afiliado_id):
+@bp.route('/ref/<int:affiliate_id>')
+def register_click(affiliate_id):
     """
-    Registra un clic para un afiliado y lo redirige a su enlace.
+    Registers a click for an affiliate and redirects to their link.
     """
-    afiliado = Afiliado.query.get_or_404(afiliado_id)
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
 
-    # Busca si ya existe una estadística para este afiliado en el día de hoy
-    estadistica = AffiliateStatistic.query.filter_by(
-        affiliate_id=afiliado.id,
+    # Searches for a statistic entry for this affiliate for the current day
+    statistic = AffiliateStatistic.query.filter_by(
+        affiliate_id=affiliate.id,
         date=date.today()
     ).first()
 
-    if estadistica:
-        # Si existe, incrementa el contador de clics
-        estadistica.clics += 1
+    if statistic:
+        # If it exists, increments the click counter
+        statistic.clicks += 1
     else:
-        # Si no existe, crea una nueva entrada
-        estadistica = AffiliateStatistic(
-            affiliate_id=afiliado.id,
-            clics=1,
+        # If it does not exist, creates a new entry
+        statistic = AffiliateStatistic(
+            affiliate_id=affiliate.id,
+            clicks=1,
             date=date.today()
         )
-        db.session.add(estadistica)
+        db.session.add(statistic)
 
-    # Guarda los cambios en la base de datos
+    # Saves the changes to the database
     db.session.commit()
 
-    # Redirige al usuario al enlace del afiliado
-    return redirect(afiliado.referral_link)
+    # Redirects the user to the affiliate's link
+    return redirect(affiliate.referral_link)

@@ -1,3 +1,5 @@
+# forms.py - Formularios de la aplicación de afiliados
+
 from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, FloatField, SelectField,
@@ -8,21 +10,21 @@ from wtforms.validators import (
 )
 from wtforms_sqlalchemy.fields import QuerySelectField
 
-# --- CORRECCIÓN: Se importan los nombres correctos de las clases del modelo ---
-# La clase debe llamarse 'Product' en lugar de 'Producto', etc.
+# Importa los modelos necesarios para los QuerySelectField
 from models import Product, Subcategory, Category, Affiliate
 
-# --- Validador personalizado para rutas relativas o URL completas ---
+# Validador personalizado para rutas relativas o URL completas
 def validate_image_path(form, field):
     """
-    Valida que la dirección URL de la imagen sea una ruta web o una ruta local válida.
+    Valida que la URL de la imagen sea una ruta web o una ruta local válida.
     """
     if field.data and not (
         field.data.startswith(('http://', 'https://', '/', 'static/'))
     ):
-        raise ValidationError('La URL de la imagen debe comenzar con http://, https://, / o ser una ruta válida (ej. /static/img/ o static/uploads/...).')
+        raise ValidationError('La URL de la imagen debe comenzar con http://, https://, /, o ser una ruta válida (ej. /static/img/ o static/uploads/...).')
 
 # --- Formularios de solicitud ---
+
 class LoginForm(FlaskForm):
     """Formulario para el inicio de sesión del usuario."""
     username = StringField('Usuario', validators=[DataRequired()])
@@ -37,7 +39,7 @@ class ProductForm(FlaskForm):
     image = StringField('URL de la Imagen', validators=[Optional(), validate_image_path])
     link = StringField('Enlace de Afiliado', validators=[DataRequired(), URL(message='Por favor, introduce una URL válida.')])
     
-    # CORRECCIÓN: Se usa 'Subcategory' en lugar de 'Subcategoria' y 'name' en lugar de 'nombre'
+    # Se usa 'Subcategory' y 'name' en lugar de 'Subcategoría' y 'nombre' para consistencia
     subcategory = QuerySelectField(
         'Subcategoría',
         query_factory=lambda: Subcategory.query.order_by(Subcategory.name).all(),
@@ -51,15 +53,15 @@ class ProductForm(FlaskForm):
     submit = SubmitField('Guardar Producto')
 
 class CategoryForm(FlaskForm):
-    """Form for creating and editing categories."""
+    """Formulario para crear y editar categorías."""
     name = StringField('Nombre de la Categoría', validators=[DataRequired(), Length(min=2, max=100)])
     submit = SubmitField('Guardar Categoría')
 
 class SubCategoryForm(FlaskForm):
-    """Form for creating and editing subcategories."""
+    """Formulario para crear y editar subcategorías."""
     name = StringField('Nombre de la Subcategoría', validators=[DataRequired(), Length(min=2, max=100)])
     
-    # CORRECCIÓN: Se usa 'Category' en lugar de 'Categoria' y 'name' en lugar de 'nombre'
+    # Se usa 'Category' y 'name' para consistencia
     category = QuerySelectField(
         'Categoría',
         query_factory=lambda: Category.query.order_by(Category.name).all(),
@@ -70,7 +72,7 @@ class SubCategoryForm(FlaskForm):
     submit = SubmitField('Guardar Subcategoría')
 
 class ArticleForm(FlaskForm):
-    """Form for creating and editing articles."""
+    """Formulario para crear y editar artículos."""
     title = StringField('Título del Artículo', validators=[DataRequired(), Length(min=5, max=200)])
     content = TextAreaField('Contenido del Artículo', validators=[DataRequired()])
     author = StringField('Autor', validators=[Optional(), Length(max=100)])
@@ -78,12 +80,12 @@ class ArticleForm(FlaskForm):
     submit = SubmitField('Guardar Artículo')
 
 class ApiSyncForm(FlaskForm):
-    """Form for syncing external products."""
+    """Formulario para sincronizar productos externos."""
     api_url = StringField('URL de la API Externa', validators=[DataRequired(), URL(message='Por favor, introduce una URL válida para la API.')])
     submit = SubmitField('Sincronizar Productos')
 
 class SocialMediaForm(FlaskForm):
-    """Form for managing social media links."""
+    """Formulario para gestionar enlaces a redes sociales."""
     platform = SelectField('Plataforma', choices=[
         ('Facebook', 'Facebook'), ('Twitter', 'X (Twitter)'), ('Instagram', 'Instagram'),
         ('LinkedIn', 'LinkedIn'), ('YouTube', 'YouTube'), ('TikTok', 'TikTok'),
@@ -95,14 +97,14 @@ class SocialMediaForm(FlaskForm):
     submit = SubmitField('Guardar Enlace')
 
 class ContactMessageAdminForm(FlaskForm):
-    """Form for responding to and managing contact messages."""
+    """Formulario para responder y gestionar mensajes de contacto."""
     response_text = TextAreaField('Responder Mensaje', validators=[Optional()])
     is_read = BooleanField('Marcar como leído', default=False)
     is_archived = BooleanField('Archivar Mensaje', default=False)
     submit_response = SubmitField('Enviar Respuesta y Actualizar')
 
 class TestimonialForm(FlaskForm):
-    """Form for managing testimonials by the administrator."""
+    """Formulario para gestionar testimonios por el administrador."""
     author = StringField('Autor del Testimonio', validators=[DataRequired(), Length(min=2, max=100)])
     content = TextAreaField('Contenido del Testimonio', validators=[DataRequired()])
     is_visible = BooleanField('Visible en el Sitio Público', default=False)
@@ -111,14 +113,15 @@ class TestimonialForm(FlaskForm):
     submit = SubmitField('Guardar Testimonio')
 
 class PublicTestimonialForm(FlaskForm):
-    """Form for users to submit a testimonial."""
+    """Formulario para que los usuarios envíen un testimonio."""
     author = StringField('Tu Nombre', validators=[DataRequired(), Length(min=2, max=100)])
     content = TextAreaField('Tu Testimonio', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
+    # Este es un campo "honeypot" para evitar spam de bots. No debe ser visible.
     fax_number = StringField('Número de Fax (no rellenar)', validators=[Optional()])
     submit = SubmitField('Enviar Testimonio')
 
 class AdvertisementForm(FlaskForm):
-    """Form for creating and editing advertisements."""
+    """Formulario para crear y editar anuncios."""
     AD_TYPE_CHOICES = [
         ('destacado', 'Destacado (Texto/Botón)'),
         ('recomendado', 'Producto Recomendado'),
@@ -135,7 +138,7 @@ class AdvertisementForm(FlaskForm):
     button_text = StringField('Texto del Botón', validators=[Optional(), Length(max=100)])
     button_url = StringField('URL del Botón', validators=[Optional(), URL()])
 
-    # CORRECCIÓN: Se usa 'Product' en lugar de 'Producto' y 'name' en lugar de 'nombre'
+    # Se usa 'Product' y 'name' para consistencia
     product = QuerySelectField(
         'Producto Recomendado',
         query_factory=lambda: Product.query.order_by(Product.name).all(),
@@ -183,6 +186,7 @@ class AdvertisementForm(FlaskForm):
         return True
 
 # --- Formularios de afiliados (movidos de admin.py) ---
+
 class AffiliateForm(FlaskForm):
     """Formulario para crear y editar afiliados."""
     name = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=100)])
@@ -196,7 +200,7 @@ class AffiliateStatisticForm(FlaskForm):
     start_date = DateTimeLocalField('Fecha de Inicio', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     end_date = DateTimeLocalField('Fecha de Fin', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     
-    # CORRECCIÓN: Se usa 'Affiliate' en lugar de 'Afiliado' y 'name' en lugar de 'nombre'
+    # Se usa 'affiliate' y 'Affiliate' para consistencia
     affiliate = QuerySelectField(
         'Afiliado',
         query_factory=lambda: Affiliate.query.order_by(Affiliate.name).all(),

@@ -10,27 +10,27 @@ from wtforms_sqlalchemy.fields import QuerySelectField
 
 # --- CORRECCIÓN: Se importan los nombres correctos de las clases del modelo ---
 # La clase debe llamarse 'Product' en lugar de 'Producto', etc.
-from models import Product, Affiliate, Category, Subcategory
+from models import Product, Subcategory, Category, Affiliate
 
-# --- Custom validator for relative paths or full URLs ---
+# --- Validador personalizado para rutas relativas o URL completas ---
 def validate_image_path(form, field):
     """
-    Validates that the image URL is a web path or a valid local path.
+    Valida que la dirección URL de la imagen sea una ruta web o una ruta local válida.
     """
     if field.data and not (
         field.data.startswith(('http://', 'https://', '/', 'static/'))
     ):
         raise ValidationError('La URL de la imagen debe comenzar con http://, https://, / o ser una ruta válida (ej. /static/img/ o static/uploads/...).')
 
-# --- Application Forms ---
+# --- Formularios de solicitud ---
 class LoginForm(FlaskForm):
-    """Form for user login."""
+    """Formulario para el inicio de sesión del usuario."""
     username = StringField('Usuario', validators=[DataRequired()])
     password = PasswordField('Contraseña', validators=[DataRequired()])
     submit = SubmitField('Iniciar Sesión')
 
 class ProductForm(FlaskForm):
-    """Form for creating and editing products."""
+    """Formulario para crear y editar productos."""
     name = StringField('Nombre del Producto', validators=[DataRequired(), Length(min=2, max=200)])
     price = FloatField('Precio', validators=[DataRequired(), NumberRange(min=0.01, message='El precio debe ser un número positivo.')])
     description = TextAreaField('Descripción', validators=[Optional()])
@@ -182,9 +182,9 @@ class AdvertisementForm(FlaskForm):
 
         return True
 
-# --- Affiliate Forms (Moved from admin.py) ---
+# --- Formularios de afiliados (movidos de admin.py) ---
 class AffiliateForm(FlaskForm):
-    """Form for creating and editing affiliates."""
+    """Formulario para crear y editar afiliados."""
     name = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Length(max=120), Email()])
     referral_link = StringField('Enlace de Referido', validators=[DataRequired(), URL()])
@@ -192,7 +192,7 @@ class AffiliateForm(FlaskForm):
     submit = SubmitField('Guardar Afiliado')
 
 class AffiliateStatisticForm(FlaskForm):
-    """Form for generating affiliate statistics reports."""
+    """Formulario para generar informes de estadísticas de afiliados."""
     start_date = DateTimeLocalField('Fecha de Inicio', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     end_date = DateTimeLocalField('Fecha de Fin', format='%Y-%m-%dT%H:%M', validators=[Optional()])
     

@@ -24,6 +24,8 @@ bp = Blueprint('publico', __name__)
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
     if os.getenv("OPENAI_API_KEY"):
+        # Se ha corregido el código para inicializar el cliente sin el argumento 'proxies'
+        # que causaba el error en versiones más recientes de la biblioteca.
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     else:
         client = None
@@ -31,7 +33,6 @@ try:
 except Exception as e:
     print(f"Error al inicializar el cliente OpenAI en public.py: {e}")
     client = None
-
 # --- Helper functions for chatbot tools ---
 # Estas funciones interactúan con la base de datos y preparan los datos para el chatbot.
 

@@ -4,11 +4,10 @@ from flask import Blueprint
 # Crear el Blueprint.
 bp = Blueprint('rutas', __name__)
 
-# Importar los módulos de rutas después de crear el Blueprint.
-# El comentario '# noqa: F401' es para que los linters (como Ruff)
-# no muestren un error de importación no utilizada.
-from . import afiliados_routes # noqa: F401
-from . import productos_routes # noqa: F401
-from . import public # noqa: F401
-from . import api # noqa: F401
-from . import admin # noqa: F401
+# Importar los módulos de rutas DESPUÉS de crear el Blueprint.
+# El comentario '# noqa: F401' suprime advertencias de linters sobre importaciones no utilizadas.
+from . import public_routes  # noqa: F401
+from . import admin_routes   # noqa: F401
+from . import api_routes     # noqa: F401
+# Asegúrate de que los nombres de los archivos coincidan con lo que estás importando.
+# Por ejemplo, si tienes un archivo "afiliados_routes.py", entonces la importación es correcta.

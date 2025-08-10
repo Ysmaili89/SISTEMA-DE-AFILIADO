@@ -92,27 +92,33 @@ def admin_logout():
     return redirect(url_for('admin.admin_login'))
 
 # --- Main Dashboard ---
+
+
 @bp.route('/dashboard')
 @admin_required
 def admin_dashboard():
-    """Displays the admin dashboard with summary statistics."""
-    # Using consistent, standard Python class names (e.g., from `models` module)
+    """Muestra el panel de administración con estadísticas resumidas."""
+    
+    # Realiza consultas a la base de datos de forma concisa y consistente
     product_count = Product.query.count()
     category_count = Category.query.count()
     article_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
     affiliate_count = Affiliate.query.count()
+    
+    # Esta línea parece tener un error de escritura en tu código original, debería ser `AffiliateStatistic`
     affiliate_statistic_count = AffiliateStatistic.query.count()
 
+    # Pasa las variables a la plantilla
     return render_template('admin/admin_dashboard.html',
-                           product_count=product_count,
-                           category_count=category_count,
-                           article_count=article_count,
-                           unread_messages_count=unread_messages_count,
-                           pending_testimonials_count=pending_testimonials_count,
-                           affiliate_count=affiliate_count,
-                           affiliate_statistic_count=affiliate_statistic_count)
+                            product_count=product_count,
+                            category_count=category_count,
+                            article_count=article_count,
+                            unread_messages_count=unread_messages_count,
+                            pending_testimonials_count=pending_testimonials_count,
+                            affiliate_count=affiliate_count,
+                            affiliate_statistic_count=affiliate_statistic_count)
 # --- Product Management ---
 @bp.route('/products')
 @admin_required

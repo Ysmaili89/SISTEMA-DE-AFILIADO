@@ -740,7 +740,7 @@ def admin_dislike_testimonial(testimonial_id):
     return redirect(url_for('admin.admin_testimonials'))
 
 
-# --- Admin Advertisements Management ---
+# --- Admin Advertisement Management ---
 @bp.route('/advertisements')
 @admin_required
 def admin_advertisements():
@@ -769,11 +769,11 @@ def admin_add_advertisement():
         try:
             db.session.add(new_advertisement)
             db.session.commit()
-            flash('Anuncio añadido exitosamente!', 'success')
+            flash('Advertisement added successfully!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al añadir anuncio: {e}', 'danger')
+            flash(f'Error adding advertisement: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form)
 
 @bp.route('/advertisements/edit/<int:advertisement_id>', methods=['GET', 'POST'])

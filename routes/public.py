@@ -25,6 +25,8 @@ bp = Blueprint('public', __name__)
 
 # --- Configuración del cliente de OpenAI ---
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
+
+
 try:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:

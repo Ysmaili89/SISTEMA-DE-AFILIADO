@@ -10,6 +10,8 @@ from wtforms.validators import (
 )
 from wtforms_sqlalchemy.fields import QuerySelectField
 from models import Product, Affiliate, Category, Subcategory
+
+
 def validate_image_path(form, field):
     """
     Validates that the image URL is a web path or a valid local path.
@@ -17,193 +19,207 @@ def validate_image_path(form, field):
     if field.data and not (
         field.data.startswith(('http://', 'https://', '/', 'static/'))
     ):
-        raise ValidationError('La URL de la imagen debe comenzar con http://, https://, / o ser una ruta válida (ej. /static/img/ o static/uploads/...).')
+        raise ValidationError('Image URL must start with http://, https://, / or be a valid path (e.g., /static/img/ or static/uploads/...).')
+
 
 # --- Application Forms ---
 class LoginForm(FlaskForm):
     """Form for user login."""
-    username = StringField('Usuario', validators=[DataRequired()])
-    password = PasswordField('Contraseña', validators=[DataRequired()]) 
-    submit = SubmitField('Iniciar Sesión')
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Log In')
+
 
 class ProductForm(FlaskForm):
     """Form for creating and editing products."""
-    nombre = StringField('Nombre del Producto', validators=[DataRequired(), Length(min=2, max=200)])
-    precio = FloatField('Precio', validators=[DataRequired(), NumberRange(min=0.01, message='El precio debe ser un número positivo.')])
-    descripcion = TextAreaField('Descripción', validators=[Optional()])
-    imagen = StringField('URL de la Imagen', validators=[Optional(), validate_image_path])
-    link = StringField('Enlace de Afiliado', validators=[DataRequired(), URL(message='Por favor, introduce una URL válida.')])
-    subcategoria = QuerySelectField(
-        'Subcategoría',
-        query_factory=lambda: Subcategoria.query.order_by(Subcategoria.nombre).all(),
+    name = StringField('Product Name', validators=[DataRequired(), Length(min=2, max=200)])
+    price = FloatField('Price', validators=[DataRequired(), NumberRange(min=0.01, message='Price must be a positive number.')])
+    description = TextAreaField('Description', validators=[Optional()])
+    image = StringField('Image URL', validators=[Optional(), validate_image_path])
+    link = StringField('Affiliate Link', validators=[DataRequired(), URL(message='Please enter a valid URL.')])
+    subcategory = QuerySelectField(
+        'Subcategory',
+        query_factory=lambda: Subcategory.query.order_by(Subcategory.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
-        blank_text='-- Selecciona una Subcategoría --',
+        blank_text='-- Select a Subcategory --',
         validators=[Optional()]
     )
-    external_id = StringField('ID Externo (Opcional)', validators=[Optional(), Length(max=255)])
-    submit = SubmitField('Guardar Producto')
+    external_id = StringField('External ID (Optional)', validators=[Optional(), Length(max=255)])
+    submit = SubmitField('Save Product')
+
 
 class CategoryForm(FlaskForm):
     """Form for creating and editing categories."""
-    nombre = StringField('Nombre de la Categoría', validators=[DataRequired(), Length(min=2, max=100)])
-    submit = SubmitField('Guardar Categoría')
+    name = StringField('Category Name', validators=[DataRequired(), Length(min=2, max=100)])
+    submit = SubmitField('Save Category')
+
 
 class SubCategoryForm(FlaskForm):
     """Form for creating and editing subcategories."""
-    nombre = StringField('Nombre de la Subcategoría', validators=[DataRequired(), Length(min=2, max=100)])
-    categoria = QuerySelectField(
-        'Categoría',
-        query_factory=lambda: Categoria.query.order_by(Categoria.nombre).all(),
+    name = StringField('Subcategory Name', validators=[DataRequired(), Length(min=2, max=100)])
+    category = QuerySelectField(
+        'Category',
+        query_factory=lambda: Category.query.order_by(Category.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
-        validators=[DataRequired(message='Por favor, selecciona una categoría.')]
+        get_label=lambda a: a.name,
+        validators=[DataRequired(message='Please select a category.')]
     )
-    submit = SubmitField('Guardar Subcategoría')
+    submit = SubmitField('Save Subcategory')
+
 
 class ArticleForm(FlaskForm):
     """Form for creating and editing articles."""
-    titulo = StringField('Título del Artículo', validators=[DataRequired(), Length(min=5, max=200)])
-    contenido = TextAreaField('Contenido del Artículo', validators=[DataRequired()])
-    autor = StringField('Autor', validators=[Optional(), Length(max=100)])
-    imagen = StringField('URL de la Imagen (Opcional)', validators=[Optional(), validate_image_path])
-    submit = SubmitField('Guardar Artículo')
+    title = StringField('Article Title', validators=[DataRequired(), Length(min=5, max=200)])
+    content = TextAreaField('Article Content', validators=[DataRequired()])
+    author = StringField('Author', validators=[Optional(), Length(max=100)])
+    image = StringField('Image URL (Optional)', validators=[Optional(), validate_image_path])
+    submit = SubmitField('Save Article')
+
 
 class ApiSyncForm(FlaskForm):
     """Form for syncing external products."""
-    api_url = StringField('URL de la API Externa', validators=[DataRequired(), URL(message='Por favor, introduce una URL válida para la API.')])
-    submit = SubmitField('Sincronizar Productos')
+    api_url = StringField('External API URL', validators=[DataRequired(), URL(message='Please enter a valid API URL.')])
+    submit = SubmitField('Sync Products')
+
 
 class SocialMediaForm(FlaskForm):
     """Form for managing social media links."""
-    platform = SelectField('Plataforma', choices=[
+    platform = SelectField('Platform', choices=[
         ('Facebook', 'Facebook'), ('Twitter', 'X (Twitter)'), ('Instagram', 'Instagram'),
         ('LinkedIn', 'LinkedIn'), ('YouTube', 'YouTube'), ('TikTok', 'TikTok'),
         ('WhatsApp', 'WhatsApp'), ('Telegram', 'Telegram'), ('Pinterest', 'Pinterest'),
-        ('Snapchat', 'Snapchat'), ('Discord', 'Discord'), ('Reddit', 'Reddit'), ('Otro', 'Otro')
+        ('Snapchat', 'Snapchat'), ('Discord', 'Discord'), ('Reddit', 'Reddit'), ('Other', 'Other')
     ], validators=[DataRequired()])
-    url = StringField('URL del Perfil', validators=[DataRequired(), URL()])
-    is_visible = BooleanField('Visible en el Sitio Público', default=True)
-    submit = SubmitField('Guardar Enlace')
+    url = StringField('Profile URL', validators=[DataRequired(), URL()])
+    is_visible = BooleanField('Visible on Public Site', default=True)
+    submit = SubmitField('Save Link')
+
 
 class ContactMessageAdminForm(FlaskForm):
     """Form for responding to and managing contact messages."""
-    response_text = TextAreaField('Responder Mensaje', validators=[Optional()])
-    is_read = BooleanField('Marcar como leído', default=False)
-    is_archived = BooleanField('Archivar Mensaje', default=False)
-    submit_response = SubmitField('Enviar Respuesta y Actualizar')
+    response_text = TextAreaField('Respond to Message', validators=[Optional()])
+    is_read = BooleanField('Mark as Read', default=False)
+    is_archived = BooleanField('Archive Message', default=False)
+    submit_response = SubmitField('Send Response and Update')
+
 
 class TestimonialForm(FlaskForm):
     """Form for managing testimonials by the administrator."""
-    author = StringField('Autor del Testimonio', validators=[DataRequired(), Length(min=2, max=100)])
-    content = TextAreaField('Contenido del Testimonio', validators=[DataRequired()])
-    is_visible = BooleanField('Visible en el Sitio Público', default=False)
-    likes = StringField('Me gusta (solo lectura)', render_kw={'readonly': True})
-    dislikes = StringField('Dislikes (solo lectura)', render_kw={'readonly': True})
-    submit = SubmitField('Guardar Testimonio')
+    author = StringField('Testimonial Author', validators=[DataRequired(), Length(min=2, max=100)])
+    content = TextAreaField('Testimonial Content', validators=[DataRequired()])
+    is_visible = BooleanField('Visible on Public Site', default=False)
+    likes = StringField('Likes (Read-only)', render_kw={'readonly': True})
+    dislikes = StringField('Dislikes (Read-only)', render_kw={'readonly': True})
+    submit = SubmitField('Save Testimonial')
+
 
 class PublicTestimonialForm(FlaskForm):
     """Form for users to submit a testimonial."""
-    author = StringField('Tu Nombre', validators=[DataRequired(), Length(min=2, max=100)])
-    contenido = TextAreaField('Tu Testimonio', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
-    fax_number = StringField('Número de Fax (no rellenar)', validators=[Optional()])
-    submit = SubmitField('Enviar Testimonio')
+    author = StringField('Your Name', validators=[DataRequired(), Length(min=2, max=100)])
+    content = TextAreaField('Your Testimonial', validators=[DataRequired(), Length(min=10, max=500)], render_kw={"rows": 5})
+    fax_number = StringField('Fax Number (do not fill in)', validators=[Optional()])
+    submit = SubmitField('Send Testimonial')
+
 
 class AdvertisementForm(FlaskForm):
     """Form for creating and editing advertisements."""
     AD_TYPE_CHOICES = [
-        ('destacado', 'Destacado (Texto/Botón)'),
-        ('recomendado', 'Producto Recomendado'),
-        ('mas_vendido', 'Lo más vendido (Texto/Botón)'),
-        ('patrocinado', 'Patrocinado (AdSense)'),
-        ('relevante', 'Relevante (AdSense)')
+        ('featured', 'Featured (Text/Button)'),
+        ('recommended', 'Recommended Product'),
+        ('best_seller', 'Best Seller (Text/Button)'),
+        ('sponsored', 'Sponsored (AdSense)'),
+        ('relevant', 'Relevant (AdSense)')
     ]
 
-    type = SelectField('Tipo de Anuncio', choices=AD_TYPE_CHOICES, validators=[DataRequired()])
-    title = StringField('Título del Anuncio', validators=[DataRequired(), Length(max=200)])
-    is_active = BooleanField('Activo', default=True)
+    type = SelectField('Ad Type', choices=AD_TYPE_CHOICES, validators=[DataRequired()])
+    title = StringField('Ad Title', validators=[DataRequired(), Length(max=200)])
+    is_active = BooleanField('Active', default=True)
 
-    text_content = TextAreaField('Contenido de Texto', validators=[Optional()])
-    button_text = StringField('Texto del Botón', validators=[Optional(), Length(max=100)])
-    button_url = StringField('URL del Botón', validators=[Optional(), URL()])
+    text_content = TextAreaField('Text Content', validators=[Optional()])
+    button_text = StringField('Button Text', validators=[Optional(), Length(max=100)])
+    button_url = StringField('Button URL', validators=[Optional(), URL()])
 
-    producto = QuerySelectField(
-        'Producto Recomendado',
-        query_factory=lambda: Producto.query.order_by(Producto.nombre).all(),
+    product = QuerySelectField(
+        'Recommended Product',
+        query_factory=lambda: Product.query.order_by(Product.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
-        blank_text='-- Selecciona un Producto --',
+        blank_text='-- Select a Product --',
         validators=[Optional()]
     )
-    image_url = StringField('URL de la Imagen (Producto Recomendado)', validators=[Optional(), validate_image_path])
+    image_url = StringField('Image URL (Recommended Product)', validators=[Optional(), validate_image_path])
 
-    adsense_client_id = StringField('ID de Cliente AdSense (ca-pub-XXXXXXXXXXXXXX)', validators=[Optional(), Length(max=50)])
-    adsense_slot_id = StringField('ID de Slot AdSense (9999999999)', validators=[Optional(), Length(max=50)])
+    adsense_client_id = StringField('AdSense Client ID (ca-pub-XXXXXXXXXXXXXX)', validators=[Optional(), Length(max=50)])
+    adsense_slot_id = StringField('AdSense Slot ID (9999999999)', validators=[Optional(), Length(max=50)])
 
-    start_date = DateTimeLocalField('Fecha de Inicio (Opcional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
-    end_date = DateTimeLocalField('Fecha de Fin (Opcional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    start_date = DateTimeLocalField('Start Date (Optional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    end_date = DateTimeLocalField('End Date (Optional)', format='%Y-%m-%dT%H:%M', validators=[Optional()])
 
-    submit = SubmitField('Guardar Anuncio')
+    submit = SubmitField('Save Advertisement')
 
     def validate(self):
         if not super().validate():
             return False
 
-        if self.type.data == 'recomendado':
-            if not self.producto.data and not self.image_url.data:
-                msg = 'Debes seleccionar un producto o proporcionar una URL de imagen.'
-                self.producto.errors.append(msg)
+        if self.type.data == 'recommended':
+            if not self.product.data and not self.image_url.data:
+                msg = 'You must select a product or provide an image URL.'
+                self.product.errors.append(msg)
                 self.image_url.errors.append(msg)
                 return False
-        elif self.type.data in ['destacado', 'mas_vendido']:
+        elif self.type.data in ['featured', 'best_seller']:
             if not (self.text_content.data or self.button_text.data or self.button_url.data):
-                self.text_content.errors.append('Para este tipo de anuncio, se requiere contenido de texto, texto del botón o URL del botón.')
+                self.text_content.errors.append('For this ad type, text content, button text, or button URL is required.')
                 return False
-        elif self.type.data in ['patrocinado', 'relevante']:
+        elif self.type.data in ['sponsored', 'relevant']:
             if not self.adsense_client_id.data or not self.adsense_slot_id.data:
-                msg = 'Se requieren el ID de Cliente y el ID de Slot de AdSense para este tipo de anuncio.'
+                msg = 'AdSense Client ID and Slot ID are required for this ad type.'
                 self.adsense_client_id.errors.append(msg)
                 self.adsense_slot_id.errors.append(msg)
                 return False
 
         if self.start_date.data and self.end_date.data and self.start_date.data >= self.end_date.data:
-            self.end_date.errors.append('La fecha de fin debe ser posterior a la fecha de inicio.')
+            self.end_date.errors.append('End date must be after the start date.')
             return False
 
         return True
 
+
 # --- Affiliate Forms (Moved from admin.py) ---
 class AffiliateForm(FlaskForm):
     """Form for creating and editing affiliates."""
-    nombre = StringField('Nombre', validators=[DataRequired(), Length(min=2, max=100)])
+    name = StringField('Name', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Length(max=120), Email()])
-    enlace_referido = StringField('Enlace de Referido', validators=[DataRequired(), URL()])
-    activo = BooleanField('Activo', default=True)
-    submit = SubmitField('Guardar Afiliado')
+    referral_link = StringField('Referral Link', validators=[DataRequired(), URL()])
+    is_active = BooleanField('Active', default=True)
+    submit = SubmitField('Save Affiliate')
+
 
 class AffiliateStatisticForm(FlaskForm):
     """Form for generating affiliate statistics reports."""
-    start_date = DateTimeLocalField('Fecha de Inicio', format='%Y-%m-%dT%H:%M', validators=[Optional()])
-    end_date = DateTimeLocalField('Fecha de Fin', format='%Y-%m-%dT%H:%M', validators=[Optional()])
-    afiliado = QuerySelectField(
-        'Afiliado',
-        query_factory=lambda: Afiliado.query.order_by(Afiliado.nombre).all(),
+    start_date = DateTimeLocalField('Start Date', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    end_date = DateTimeLocalField('End Date', format='%Y-%m-%dT%H:%M', validators=[Optional()])
+    affiliate = QuerySelectField(
+        'Affiliate',
+        query_factory=lambda: Affiliate.query.order_by(Affiliate.name).all(),
         get_pk=lambda a: a.id,
-        get_label=lambda a: a.nombre,
+        get_label=lambda a: a.name,
         allow_blank=True,
-        blank_text='-- Todos los Afiliados --',
+        blank_text='-- All Affiliates --',
         validators=[Optional()]
     )
-    submit = SubmitField('Generar Reporte')
+    submit = SubmitField('Generate Report')
+
 
 class AdsenseConfigForm(FlaskForm):
     """Form for AdSense configuration."""
-    client_id = StringField('ID de Cliente AdSense (data-ad-client)', validators=[DataRequired(), Length(max=50)])
-    ad_slot_header = StringField('ID de Slot para Encabezado', validators=[Optional(), Length(max=50)])
-    ad_slot_sidebar = StringField('ID de Slot para Barra Lateral', validators=[Optional(), Length(max=50)])
-    ad_slot_article_top = StringField('ID de Slot para Parte Superior del Artículo', validators=[Optional(), Length(max=50)])
-    ad_slot_article_bottom = StringField('ID de Slot para Parte Inferior del Artículo', validators=[Optional(), Length(max=50)])
-    is_active = BooleanField('Activar AdSense', default=False)
-    submit = SubmitField('Guardar Configuración AdSense')
+    client_id = StringField('AdSense Client ID (data-ad-client)', validators=[DataRequired(), Length(max=50)])
+    ad_slot_header = StringField('Header Ad Slot ID', validators=[Optional(), Length(max=50)])
+    ad_slot_sidebar = StringField('Sidebar Ad Slot ID', validators=[Optional(), Length(max=50)])
+    ad_slot_article_top = StringField('Article Top Ad Slot ID', validators=[Optional(), Length(max=50)])
+    ad_slot_article_bottom = StringField('Article Bottom Ad Slot ID', validators=[Optional(), Length(max=50)])
+    is_active = BooleanField('Activate AdSense', default=False)
+    submit = SubmitField('Save AdSense Configuration')

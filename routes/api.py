@@ -187,7 +187,9 @@ def api_testimonials():
 @bp.route('/testimonials/<int:testimonial_id>', methods=['GET'])
 def api_testimonial_by_id(testimonial_id):
     testimonial = Testimonial.query.get(testimonial_id)
+    # Corrección: Uso de 'if' y 'and' en lugar de 'si' y 'y'
     if testimonial and testimonial.is_visible:
+        # Corrección: Nombres de variables del modelo en inglés
         return jsonify({
             "id": testimonial.id,
             "author": testimonial.author,

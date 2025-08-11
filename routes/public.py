@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 # Importaciones de aplicaciones locales
 from models import (
     Product, Category, Subcategory, Article, ContactMessage,
-    Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+    Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
 )
 from forms import PublicTestimonialForm
 from extensions import db
@@ -21,18 +21,18 @@ from extensions import db
 load_dotenv()
 
 # Definir el plan 'publico'
-bp = Blueprint('publico', __name__)
+bp = Blueprint('public', __name__)
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY no está configurada en el entorno.")
+        raise ValueError("OPENAI_API_KEY is not configured in the environment.")
     
     openai_client = OpenAI(api_key=api_key)
 
 except Exception as e:
-    print(f"Error al inicializar el cliente OpenAI en public.py: {e}")
+    print(f"Error initializing OpenAI client in public.py: {e}")
     openai_client = None
 
 # --- Funciones auxiliares para herramientas de chatbot ---
@@ -103,14 +103,14 @@ def get_contact_info():
     """
     Provides contact information for customer support, including a dynamic URL to the contact page.
     """
-    contact_url = url_for('publico.contacto', _external=True)
+    contact_url = url_for('public.contact', _external=True)
     return {"contact_info": f"You can contact our support team by visiting our contact section at {contact_url} or by sending an email to soporte@afiliadosonline.com."}
 
 def get_general_help_info():
     """
     Provides general information on where to find help and guides, including a dynamic URL to the guides section.
     """
-    guides_url = url_for('publico.guias', _external=True)
+    guides_url = url_for('public.guides', _external=True)
     return {"help_info": f"You can find detailed guides and additional help in our Guides section: {guides_url}."}
 
 ### Context Processors
@@ -140,18 +140,18 @@ def inject_adsense_config():
     if adsense_config_db:
         return dict(
             adsense_client_id=adsense_config_db.adsense_client_id,
-            adsense_slot_header=adsense_config_db.adsense_slot_1,
-            adsense_slot_sidebar=adsense_config_db.adsense_slot_2,
-            adsense_slot_content=adsense_config_db.adsense_slot_3,
-            adsense_slot_footer='' # Asigna un slot si lo tienes, o déjalo vacío
+            adsense_slot_header=adsense_config_db.adsense_slot_header,
+            adsense_slot_sidebar=adsense_config_db.adsense_slot_sidebar,
+            adsense_slot_article_top=adsense_config_db.adsense_slot_article_top,
+            adsense_slot_article_bottom=adsense_config_db.adsense_slot_article_bottom
         )
     else:
         return dict(
             adsense_client_id='',
             adsense_slot_header='',
             adsense_slot_sidebar='',
-            adsense_slot_content='',
-            adsense_slot_footer=''
+            adsense_slot_article_top='',
+            adsense_slot_article_bottom=''
         )
 
 # --- Public Routes ---
@@ -173,7 +173,7 @@ def product_detail(slug):
     if product:
         return render_template('product_detail.html', product=product)
     flash('Producto no encontrado.', 'danger')
-    return redirect(url_for('publico.index'))
+    return redirect(url_for('public.index'))
 
 @bp.route('/categories')
 def show_categories():
@@ -208,7 +208,7 @@ def products_by_slug(slug):
                                page=page,
                                total_pages=total_pages)
     flash('Subcategoría no encontrada.', 'danger')
-    return redirect(url_for('publico.show_categories'))
+    return redirect(url_for('public.show_categories'))
 
 @bp.route('/guides')
 def guides():
@@ -248,7 +248,7 @@ def guide_detail(slug):
             article.date_posted = article.date_posted.replace(tzinfo=timezone.utc)
         return render_template('guia_detalle.html', article=article)
     flash('Artículo no encontrado.', 'danger')
-    return redirect(url_for('publico.guides'))
+    return redirect(url_for('public.guides'))
 
 @bp.route('/about', methods=['GET', 'POST'])
 def about():
@@ -258,7 +258,7 @@ def about():
         # Honeypot check for spam, redirect silently if filled
         if testimonial_form.fax_number.data:
             print("Spam detected: honeypot field filled for testimonial submission.")
-            return redirect(url_for('publico.about'))
+            return redirect(url_for('public.about'))
 
         try:
             new_testimonial = Testimonial(
@@ -270,7 +270,7 @@ def about():
             db.session.add(new_testimonial)
             db.session.commit()
             flash('¡Gracias por tu testimonio! Será revisado y, si es aprobado, aparecerá pronto en nuestra página.', 'success')
-            return redirect(url_for('publico.about'))
+            return redirect(url_for('public.about'))
         except Exception as e:
             db.session.rollback()
             flash(f'Ocurrió un error al enviar tu testimonio. Por favor, inténtalo de nuevo. Detalles: {e}', 'danger')
@@ -301,7 +301,7 @@ def contact():
 
         if fax_number:
             print("Spam detected: honeypot field filled.")
-            return redirect(url_for('publico.contact'))
+            return redirect(url_for('public.contact'))
 
         if not errors:
             try:
@@ -344,24 +344,24 @@ def sitemap():
     """Generates and serves the sitemap.xml for SEO."""
     base_url = request.url_root.rstrip('/')
     urls = [
-        {"loc": base_url + url_for('publico.index'), "changefreq": "daily", "priority": "1.0"},
-        {"loc": base_url + url_for('publico.show_categories'), "changefreq": "weekly", "priority": "0.8"},
-        {"loc": base_url + url_for('publico.about'), "changefreq": "monthly", "priority": "0.7"},
-        {"loc": base_url + url_for('publico.contact'), "changefreq": "monthly", "priority": "0.6"},
-        {"loc": base_url + url_for('publico.guides'), "changefreq": "weekly", "priority": "0.9"},
-        {"loc": base_url + url_for('publico.privacy_policy'), "changefreq": "monthly", "priority": "0.5"},
-        {"loc": base_url + url_for('publico.terms_conditions'), "changefreq": "monthly", "priority": "0.5"},
-        {"loc": base_url + url_for('publico.cookie_policy'), "changefreq": "monthly", "priority": "0.5"},
+        {"loc": base_url + url_for('public.index'), "changefreq": "daily", "priority": "1.0"},
+        {"loc": base_url + url_for('public.show_categories'), "changefreq": "weekly", "priority": "0.8"},
+        {"loc": base_url + url_for('public.about'), "changefreq": "monthly", "priority": "0.7"},
+        {"loc": base_url + url_for('public.contact'), "changefreq": "monthly", "priority": "0.6"},
+        {"loc": base_url + url_for('public.guides'), "changefreq": "weekly", "priority": "0.9"},
+        {"loc": base_url + url_for('public.privacy_policy'), "changefreq": "monthly", "priority": "0.5"},
+        {"loc": base_url + url_for('public.terms_conditions'), "changefreq": "monthly", "priority": "0.5"},
+        {"loc": base_url + url_for('public.cookie_policy'), "changefreq": "monthly", "priority": "0.5"},
     ]
     for product in Product.query.all():
         urls.append({
-            "loc": f"{base_url}{url_for('publico.product_detail', slug=product.slug)}",
+            "loc": f"{base_url}{url_for('public.product_detail', slug=product.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
     for article in Article.query.all():
         urls.append({
-            "loc": f"{base_url}{url_for('publico.guide_detail', slug=article.slug)}",
+            "loc": f"{base_url}{url_for('public.guide_detail', slug=article.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
@@ -373,7 +373,7 @@ def robots_txt():
     return (
         "User-agent: *\n"
         "Allow: /\n"
-        "Sitemap: " + request.url_root.rstrip('/') + url_for('publico.sitemap') + "\n"
+        "Sitemap: " + request.url_root.rstrip('/') + url_for('public.sitemap') + "\n"
     )
 
 @bp.route('/search')
@@ -387,6 +387,11 @@ def search_results():
 
     products_found = []
     articles_found = []
+    
+    # Se inicializan las variables de paginación fuera del bloque 'if'
+    # para evitar errores de linter.
+    total_products_pages = 0
+    total_articles_pages = 0
     total_pages = 1
 
     if query:
@@ -401,12 +406,10 @@ def search_results():
 
         products_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
         products_found = products_pagination.items
-
         total_products_pages = products_pagination.pages
 
         articles_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
         articles_found = articles_pagination.items
-
         total_articles_pages = articles_pagination.pages
 
         total_pages = max(total_products_pages, total_articles_pages) if products_found or articles_found else 1
@@ -420,33 +423,33 @@ def search_results():
 
 ### Interfaz de usuario de afiliados y rutas API
 
-@bp.route('/ref/<int:afiliado_id>')
-def register_click(afiliado_id):
+@bp.route('/ref/<int:affiliate_id>')
+def register_click(affiliate_id):
     """
     Registra un clic para un afiliado y lo redirige a su enlace.
     """
-    afiliado = Afiliado.query.get_or_404(afiliado_id)
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
 
     # Busca si ya existe una estadística para este afiliado en el día de hoy
-    estadistica = EstadisticaAfiliado.query.filter_by(
-        afiliado_id=afiliado.id,
-        fecha=date.today()
+    statistic = AffiliateStatistic.query.filter_by(
+        affiliate_id=affiliate.id,
+        date=date.today()
     ).first()
 
-    if estadistica:
+    if statistic:
         # Si existe, incrementa el contador de clics
-        estadistica.clics += 1
+        statistic.clicks += 1
     else:
         # Si no existe, crea una nueva entrada
-        estadistica = EstadisticaAfiliado(
-            afiliado_id=afiliado.id,
-            clics=1,
-            fecha=date.today()
+        statistic = AffiliateStatistic(
+            affiliate_id=affiliate.id,
+            clicks=1,
+            date=date.today()
         )
-        db.session.add(estadistica)
+        db.session.add(statistic)
 
     # Guarda los cambios en la base de datos
     db.session.commit()
 
     # Redirige al usuario al enlace del afiliado
-    return redirect(afiliado.enlace_referido)
+    return redirect(affiliate.referral_link)

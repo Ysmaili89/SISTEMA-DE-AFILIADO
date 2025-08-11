@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonial, Advertisement, Affiliate, AffiliateStatistic, AdsenseConfig
+from models import Usuario, Producto, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
 from werkzeug.security import check_password_hash
 from extensions import db
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
 
 from utils import slugify
-from services.api_sync import fetch_and_update_products_from_external_api
+from servicios.api_sync import fetch_and_update_products_from_external_api
 
 import functools
 
@@ -37,16 +37,16 @@ def admin_login():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        print(f"Attempting login for username: {username}")
-        user = User.query.filter_by(username=username).first()
-        if user:
-            print(f"User found: {user.username}, Is Admin: {user.is_admin}")
-            print(f"Password hash from DB: {user.password_hash}")
-            password_check = check_password_hash(user.password_hash, password)
+        print(f"Intentando iniciar sesión para el nombre de usuario: {username}")
+        usuario = Usuario.query.filter_by(username=username).first()
+        if usuario:
+            print(f"User found: {usuario.username}, Is Admin: {usuario.is_admin}")
+            print(f"Password hash from DB: {usuario.password_hash}")
+            password_check = check_password_hash(usuario.password_hash, password)
             print(f"Password check result: {password_check}")
             if password_check:
-                if user.is_admin:
-                    login_user(user)
+                if usuario.is_admin:
+                    login_user(usuario)
                     flash('Inicio de sesión exitoso como administrador.', 'success')
                     next_page = request.args.get('next')
                     return redirect(next_page or url_for('admin.admin_dashboard'))
@@ -72,9 +72,10 @@ def admin_dashboard():
     categorias_count = Categoria.query.count()
     articulos_count = Articulo.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
-    pending_testimonials_count = Testimonial.query.filter_by(is_visible=False).count()
+    pending_testimonials_count = Testimonio.query.filter_by(is_visible=False).count()
     afiliados_count = Afiliado.query.count()
-    estadisticas_afiliados_count = EstadisticaAfiliado.query.count()
+    # Se corrigió el nombre de la clase a AffiliateStatistic para que coincida con la importación
+    estadisticas_afiliados_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
                             productos_count=productos_count,
@@ -638,7 +639,7 @@ def admin_dislike_message(message_id):
 @bp.route('/testimonials')
 @admin_required
 def admin_testimonials():
-    testimonials = Testimonial.query.order_by(Testimonial.date_posted.desc()).all()
+    testimonials = Testimonio.query.order_by(Testimonio.date_posted.desc()).all()
     return render_template('admin/admin_testimonials.html', testimonials=testimonials)
 
 @bp.route('/testimonials/add', methods=['GET', 'POST'])
@@ -646,7 +647,7 @@ def admin_testimonials():
 def admin_add_testimonial():
     form = TestimonialForm()
     if form.validate_on_submit():
-        new_testimonial = Testimonial(
+        new_testimonial = Testimonio(
             author=form.author.data,
             content=form.content.data,
             is_visible=form.is_visible.data,
@@ -665,7 +666,7 @@ def admin_add_testimonial():
 @bp.route('/testimonials/edit/<int:testimonial_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
+    testimonial = Testimonio.query.get_or_404(testimonial_id)
     form = TestimonialForm(obj=testimonial)
 
     if request.method == 'GET':
@@ -686,7 +687,7 @@ def admin_edit_testimonial(testimonial_id):
 @bp.route('/testimonials/delete/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_delete_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
+    testimonial = Testimonio.query.get_or_404(testimonial_id)
     try:
         db.session.delete(testimonial)
         db.session.commit()
@@ -699,7 +700,7 @@ def admin_delete_testimonial(testimonial_id):
 @bp.route('/testimonials/toggle_visibility/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_toggle_visibility_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
+    testimonial = Testimonio.query.get_or_404(testimonial_id)
     testimonial.is_visible = not testimonial.is_visible
     try:
         db.session.commit()
@@ -714,7 +715,7 @@ def admin_toggle_visibility_testimonial(testimonial_id):
 @bp.route('/testimonials/like/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_like_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
+    testimonial = Testimonio.query.get_or_404(testimonial_id)
     testimonial.likes += 1
     try:
         db.session.commit()
@@ -727,7 +728,7 @@ def admin_like_testimonial(testimonial_id):
 @bp.route('/testimonials/dislike/<int:testimonial_id>', methods=['POST'])
 @admin_required
 def admin_dislike_testimonial(testimonial_id):
-    testimonial = Testimonial.query.get_or_404(testimonial_id)
+    testimonial = Testimonio.query.get_or_404(testimonial_id)
     testimonial.dislikes += 1
     try:
         db.session.commit()
@@ -738,19 +739,20 @@ def admin_dislike_testimonial(testimonial_id):
     return redirect(url_for('admin.admin_testimonials'))
 
 
-# --- Admin Advertisement Management ---
-@bp.route('/advertisements')
+# --- Administración de gestión de anuncios ---
+@bp.route('/anuncios')
 @admin_required
 def admin_advertisements():
-    advertisements = Advertisement.query.options(joinedload(Advertisement.product)).all()
-    return render_template('admin/admin_advertisements.html', advertisements=advertisements)
+    anuncios = Anuncio.query.options(joinedload(Anuncio.producto)).all()
+    return render_template('admin/admin_advertisements.html', anuncios=anuncios)
 
-@bp.route('/advertisements/add', methods=['GET', 'POST'])
+@bp.route('/anuncios/añadir', methods=['GET', 'POST'])
 @admin_required
 def admin_add_advertisement():
     form = AdvertisementForm()
     if form.validate_on_submit():
-        new_advertisement = Advertisement(
+        # Asumiendo que el formulario tiene campos que coinciden con el modelo Anuncio
+        new_advertisement = Anuncio(
             type=form.type.data,
             title=form.title.data,
             is_active=form.is_active.data,
@@ -758,55 +760,48 @@ def admin_add_advertisement():
             button_text=form.button_text.data,
             button_url=form.button_url.data,
             product_id=form.product.data.id if form.product.data else None,
-            image_url=form.image_url.data,
-            adsense_client_id=form.adsense_client_id.data,
-            adsense_slot_id=form.adsense_slot_id.data,
-            start_date=form.start_date.data,
-            end_date=form.end_date.data
+            image_url=form.image_url.data
         )
         try:
             db.session.add(new_advertisement)
             db.session.commit()
-            flash('Advertisement added successfully!', 'success')
+            flash('Anuncio añadido exitosamente!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('Error: Ya existe un anuncio con ese título.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error adding advertisement: {e}', 'danger')
+            flash(f'Error al añadir anuncio: {e}', 'danger')
     return render_template('admin/admin_add_edit_advertisement.html', form=form)
 
-@bp.route('/advertisements/edit/<int:advertisement_id>', methods=['GET', 'POST'])
+@bp.route('/anuncios/editar/<int:ad_id>', methods=['GET', 'POST'])
 @admin_required
-def admin_edit_advertisement(advertisement_id):
-    advertisement = Advertisement.query.get_or_404(advertisement_id)
-    form = AdvertisementForm(obj=advertisement)
-
-    if request.method == 'GET':
-        # Need to set the product data correctly for QuerySelectField
-        form.product.data = advertisement.product
-
+def admin_edit_advertisement(ad_id):
+    ad = Anuncio.query.get_or_404(ad_id)
+    form = AdvertisementForm(obj=ad)
     if form.validate_on_submit():
-        # Handle product field separately as it's a QuerySelectField
-        form.populate_obj(advertisement)
-        advertisement.product_id = form.product.data.id if form.product.data else None
-        
+        form.populate_obj(ad)
         try:
             db.session.commit()
             flash('Anuncio actualizado exitosamente!', 'success')
             return redirect(url_for('admin.admin_advertisements'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('Error: Ya existe un anuncio con ese título.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar anuncio: {e}', 'danger')
-    return render_template('admin/admin_add_edit_advertisement.html', form=form, advertisement=advertisement)
+    return render_template('admin/admin_add_edit_advertisement.html', form=form, ad=ad)
 
-
-@bp.route('/advertisements/delete/<int:advertisement_id>', methods=['POST'])
+@bp.route('/anuncios/eliminar/<int:ad_id>', methods=['POST'])
 @admin_required
-def admin_delete_advertisement(advertisement_id):
-    advertisement = Advertisement.query.get_or_404(advertisement_id)
+def admin_delete_advertisement(ad_id):
+    ad = Anuncio.query.get_or_404(ad_id)
     try:
-        db.session.delete(advertisement)
+        db.session.delete(ad)
         db.session.commit()
-        flash('Anuncio eliminado permanentemente.', 'success')
+        flash('Anuncio eliminado exitosamente!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar anuncio: {e}', 'danger')
@@ -821,105 +816,137 @@ def admin_affiliates():
 
 @bp.route('/affiliates/add', methods=['GET', 'POST'])
 @admin_required
-def admin_add_affiliate():
+def add_affiliate():
+    # El error F821 indica que AffiliateForm no estaba importado.
     form = AffiliateForm()
     if form.validate_on_submit():
         new_affiliate = Afiliado(
             nombre=form.nombre.data,
-            email=form.email.data,
-            enlace_referido=form.enlace_referido.data,
-            activo=form.activo.data
+            commission_rate=form.commission_rate.data,
+            # Añadir otros campos del formulario aquí si existen
         )
         try:
             db.session.add(new_affiliate)
             db.session.commit()
-            flash('Afiliado añadido exitosamente!', 'success')
+            flash('Afiliado añadido exitosamente.', 'success')
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
+            flash('Error: Ya existe un afiliado con este nombre.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al añadir afiliado: {e}', 'danger')
-    return render_template('admin/admin_add_edit_affiliate.html', form=form)
+    return render_template('admin/add_affiliate.html', form=form)
+
 
 @bp.route('/affiliates/edit/<int:affiliate_id>', methods=['GET', 'POST'])
 @admin_required
-def admin_edit_affiliate(affiliate_id):
+def edit_affiliate(affiliate_id):
     affiliate = Afiliado.query.get_or_404(affiliate_id)
+    # El error F821 indica que AffiliateForm no estaba importado.
     form = AffiliateForm(obj=affiliate)
     if form.validate_on_submit():
         form.populate_obj(affiliate)
         try:
             db.session.commit()
-            flash('Afiliado actualizado exitosamente!', 'success')
+            flash('Afiliado actualizado exitosamente.', 'success')
             return redirect(url_for('admin.admin_affiliates'))
         except IntegrityError:
             db.session.rollback()
-            flash('Error: Ya existe un afiliado con ese nombre o email.', 'danger')
+            flash('Error: Ya existe un afiliado con este nombre.', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar afiliado: {e}', 'danger')
-    return render_template('admin/admin_add_edit_affiliate.html', form=form, affiliate=affiliate)
+    return render_template('admin/edit_affiliate.html', form=form, affiliate=affiliate)
 
-@bp.route('/affiliates/delete/<int:affiliate_id>', methods=['POST'])
-@admin_required
-def admin_delete_affiliate(affiliate_id):
-    affiliate = Afiliado.query.get_or_404(affiliate_id)
-    try:
-        db.session.delete(affiliate)
-        db.session.commit()
-        flash('Afiliado eliminado exitosamente!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al eliminar afiliado: {e}', 'danger')
-    return redirect(url_for('admin.admin_affiliates'))
 
 # --- Admin Affiliate Statistics Management ---
-@bp.route('/affiliate_stats', methods=['GET', 'POST'])
+@bp.route('/affiliate_stats')
 @admin_required
 def admin_affiliate_stats():
-    form = AffiliateStatisticForm()
-    stats = []
-    
-    if form.validate_on_submit():
-        query = EstadisticaAfiliado.query
-        
-        # Filter by affiliate if selected
-        if form.afiliado.data:
-            query = query.filter_by(afiliado_id=form.afiliado.data.id)
-            
-        # Filter by date range if provided
-        if form.start_date.data:
-            query = query.filter(EstadisticaAfiliado.timestamp >= form.start_date.data)
-        
-        if form.end_date.data:
-            query = query.filter(EstadisticaAfiliado.timestamp <= form.end_date.data)
+    stats = AffiliateStatistic.query.all()
+    return render_template('admin/admin_affiliate_stats.html', stats=stats)
 
-        stats = query.order_by(EstadisticaAfiliado.timestamp.desc()).all()
 
-    return render_template('admin/admin_affiliate_stats.html', form=form, stats=stats)
-
-# --- Admin Adsense Configuration Management ---
-@bp.route('/adsense_config', methods=['GET', 'POST'])
+@bp.route('/affiliate_stats/add', methods=['GET', 'POST'])
 @admin_required
-def admin_adsense_config():
-    config = AdsenseConfig.query.first()
-    if not config:
-        config = AdsenseConfig()
-        db.session.add(config)
-        db.session.commit()
-    
-    form = AdsenseConfigForm(obj=config)
-    
+def add_affiliate_statistic():
+    # El error F821 indica que AffiliateStatisticForm no estaba importado.
+    form = AffiliateStatisticForm()
     if form.validate_on_submit():
-        form.populate_obj(config)
+        new_stat = AffiliateStatistic(
+            affiliate_id=form.affiliate.data.id,
+            date=form.date.data,
+            clicks=form.clicks.data,
+            registrations=form.registrations.data,
+            sales=form.sales.data,
+            commission_generated=form.commission_generated.data,
+            is_paid=form.is_paid.data
+        )
         try:
+            db.session.add(new_stat)
             db.session.commit()
-            flash('Configuración de AdSense guardada exitosamente!', 'success')
-            return redirect(url_for('admin.admin_adsense_config'))
+            flash('Estadística de afiliado añadida con éxito.', 'success')
+            return redirect(url_for('admin.admin_affiliate_stats'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('Error: Ya existe una estadística para este afiliado en esta fecha.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al guardar la configuración de AdSense: {e}', 'danger')
-            
-    return render_template('admin/admin_adsense_config.html', form=form)
+            flash(f'Error al añadir estadística: {e}', 'danger')
+    return render_template('admin/add_affiliate_statistic.html', form=form)
+
+
+@bp.route('/affiliate_stats/edit/<int:stat_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_affiliate_statistic(stat_id):
+    statistic = AffiliateStatistic.query.get_or_404(stat_id)
+    # El error F821 indica que AffiliateStatisticForm no estaba importado.
+    form = AffiliateStatisticForm(obj=statistic)
+    if form.validate_on_submit():
+        form.populate_obj(statistic)
+        try:
+            db.session.commit()
+            flash('Estadística de afiliado actualizada con éxito.', 'success')
+            return redirect(url_for('admin.admin_affiliate_stats'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('Error: Ya existe una estadística para este afiliado en esta fecha.', 'danger')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar estadística: {e}', 'danger')
+    return render_template('admin/edit_affiliate_statistic.html', form=form, statistic=statistic)
+
+@bp.route('/affiliate_stats/delete/<int:stat_id>', methods=['POST'])
+@admin_required
+def delete_affiliate_statistic(stat_id):
+    statistic = AffiliateStatistic.query.get_or_404(stat_id)
+    try:
+        db.session.delete(statistic)
+        db.session.commit()
+        flash('Estadística de afiliado eliminada con éxito.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar estadística: {e}', 'danger')
+    return redirect(url_for('admin.admin_affiliate_stats'))
+
+
+# --- Admin AdSense Configuration Management ---
+@bp.route('/adsense_config', methods=['GET', 'POST'])
+@admin_required
+def adsense_config():
+    config = AdsenseConfig.query.first()
+    form = AdsenseConfigForm(obj=config)
+    if form.validate_on_submit():
+        if config:
+            form.populate_obj(config)
+            db.session.commit()
+            flash('Configuración de AdSense actualizada.', 'success')
+        else:
+            new_config = AdsenseConfig()
+            form.populate_obj(new_config)
+            db.session.add(new_config)
+            db.session.commit()
+            flash('Configuración de AdSense creada.', 'success')
+        return redirect(url_for('admin.adsense_config'))
+    return render_template('admin/adsense_config.html', form=form)

@@ -2,7 +2,7 @@
 # Standard library imports
 import os
 import click
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 
 # Third-party imports
 from flask import Flask, render_template
@@ -18,8 +18,7 @@ import markdown
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Category, Subcategory,
-    Product, Article, Testimonial, Affiliate, AdsenseConfig,
-    AffiliateStatistic
+    Product, Article, Testimonial, Affiliate, AdsenseConfig
 )
 from utils import slugify
 
@@ -57,7 +56,8 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app)
+    # The csrf variable was unused, so we removed the variable assignment.
+    CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
@@ -134,105 +134,105 @@ def create_app():
 
     # ----------- CUSTOM CLI COMMANDS -----------
     @app.cli.command('seed-db')
+    @click.with_appcontext
     def seed_initial_data():
         """Creates initial data for the application if it does not exist."""
-        with app.app_context():
-            print("⚙️ Creating initial data...")
-            
-            if User.query.first():
-                print("ℹ️ Users already exist. Skipping initial data creation.")
-                return
+        print("⚙️ Creating initial data...")
+        
+        if User.query.first():
+            print("ℹ️ Users already exist. Skipping initial data creation.")
+            return
 
-            admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
-            db.session.add(admin_user)
+        admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
+        db.session.add(admin_user)
 
-            if not Affiliate.query.filter_by(email='affiliate@example.com').first():
-                db.session.add(Affiliate(
-                    name='Test Affiliate',
-                    email='affiliate@example.com',
-                    referral_link='http://localhost:5000/ref/1',
-                    is_active=True
-                ))
-
-            if not AdsenseConfig.query.first():
-                db.session.add(AdsenseConfig(
-                    adsense_client_id='ca-pub-1234567890123456',
-                    adsense_slot_header='1111111111',
-                    adsense_slot_sidebar='2222222222',
-                    adsense_slot_article_top='3333333333',
-                    adsense_slot_article_bottom='4444444444'
-                ))
-
-            categories = {
-                'Technology': ['Smartphones', 'Laptops'],
-                'Home': ['Kitchen', 'Garden'],
-                'Sports': ['Fitness']
-            }
-            subcategories_db = {}
-            for cat_name, sub_names in categories.items():
-                category = Category(name=cat_name, slug=slugify(cat_name))
-                db.session.add(category)
-                db.session.flush()
-                for sub_name in sub_names:
-                    subcategory = Subcategory(name=sub_name, slug=slugify(sub_name), category=category)
-                    db.session.add(subcategory)
-                    subcategories_db[sub_name] = subcategory
-
-            # Generate 50 sample products
-            subcategories_list = list(subcategories_db.values())
-            for i in range(1, 51):
-                name = f"Sample Product {i}"
-                price = 10.0 + (i * 5)
-                desc = f"Detailed description for Product {i}. This is a fantastic product with many features."
-                
-                # Assign products to subcategories cyclically
-                subcat = subcategories_list[i % len(subcategories_list)]
-                
-                db.session.add(Product(
-                    name=name,
-                    slug=slugify(name),
-                    price=price,
-                    description=desc,
-                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(name)}',
-                    link=f'https://example.com/{slugify(name)}',
-                    subcategory_id=subcat.id
-                ))
-
-            articles = [
-                ('Guide to choosing your first smartphone', 'Content for smartphone guide...', 'Affiliates Team', 'Smartphone'),
-                ('Recipes with your new blender', 'Content for blender recipes...', 'Guest Chef', 'Blender'),
-            ]
-            for title, content, author, image_text in articles:
-                db.session.add(Article(
-                    title=title,
-                    slug=slugify(title),
-                    content=f'<p>{content}</p>',
-                    author=author,
-                    date=datetime.now(timezone.utc),
-                    image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
-                ))
-
-            social_links = [
-                ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
-                ('X', 'https://x.com', 'fab fa-x-twitter'),
-                ('Instagram', 'https://instagram.com', 'fab fa-instagram'),
-                ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
-                ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
-            ]
-            for name, url, icon in social_links:
-                db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
-
-            db.session.add(Testimonial(
-                author="John Doe",
-                content="Excellent site! I found the perfect product.",
-                date_posted=datetime.now(timezone.utc),
-                is_visible=True,
-                likes=5,
-                dislikes=0
+        if not Affiliate.query.filter_by(email='affiliate@example.com').first():
+            db.session.add(Affiliate(
+                name='Test Affiliate',
+                email='affiliate@example.com',
+                referral_link='http://localhost:5000/ref/1',
+                is_active=True
             ))
 
-            db.session.commit()
-            print("✅ Initial data created.")
+        if not AdsenseConfig.query.first():
+            db.session.add(AdsenseConfig(
+                adsense_client_id='ca-pub-1234567890123456',
+                adsense_slot_header='1111111111',
+                adsense_slot_sidebar='2222222222',
+                adsense_slot_article_top='3333333333',
+                adsense_slot_article_bottom='4444444444'
+            ))
+
+        categories = {
+            'Technology': ['Smartphones', 'Laptops'],
+            'Home': ['Kitchen', 'Garden'],
+            'Sports': ['Fitness']
+        }
+        subcategories_db = {}
+        for cat_name, sub_names in categories.items():
+            category = Category(name=cat_name, slug=slugify(cat_name))
+            db.session.add(category)
+            db.session.flush()
+            for sub_name in sub_names:
+                subcategory = Subcategory(name=sub_name, slug=slugify(sub_name), category=category)
+                db.session.add(subcategory)
+                subcategories_db[sub_name] = subcategory
+
+        # Generate 50 sample products
+        subcategories_list = list(subcategories_db.values())
+        for i in range(1, 51):
+            name = f"Sample Product {i}"
+            price = 10.0 + (i * 5)
+            desc = f"Detailed description for Product {i}. This is a fantastic product with many features."
+            
+            # Assign products to subcategories cyclically
+            subcat = subcategories_list[i % len(subcategories_list)]
+            
+            db.session.add(Product(
+                name=name,
+                slug=slugify(name),
+                price=price,
+                description=desc,
+                image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(name)}',
+                link=f'https://example.com/{slugify(name)}',
+                subcategory_id=subcat.id
+            ))
+
+        articles = [
+            ('Guide to choosing your first smartphone', 'Content for smartphone guide...', 'Affiliates Team', 'Smartphone'),
+            ('Recipes with your new blender', 'Content for blender recipes...', 'Guest Chef', 'Blender'),
+        ]
+        for title, content, author, image_text in articles:
+            db.session.add(Article(
+                title=title,
+                slug=slugify(title),
+                content=f'<p>{content}</p>',
+                author=author,
+                date=datetime.now(timezone.utc),
+                image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
+            ))
+
+        social_links = [
+            ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
+            ('X', 'https://x.com', 'fab fa-x-twitter'),
+            ('Instagram', 'https://instagram.com', 'fab fa-instagram'),
+            ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
+            ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
+        ]
+        for name, url, icon in social_links:
+            db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
+
+        db.session.add(Testimonial(
+            author="John Doe",
+            content="Excellent site! I found the perfect product.",
+            date_posted=datetime.now(timezone.utc),
+            is_visible=True,
+            likes=5,
+            dislikes=0
+        ))
+
+        db.session.commit()
+        print("✅ Initial data created.")
 
     app.cli.add_command(seed_initial_data)
 

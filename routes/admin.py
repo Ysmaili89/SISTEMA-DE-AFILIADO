@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, Producto, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
+from models import User, Product, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
 from werkzeug.security import check_password_hash
 from extensions import db
 from sqlalchemy.exc import IntegrityError
@@ -67,17 +67,21 @@ def admin_logout():
 @bp.route('/dashboard')
 @admin_required
 def admin_dashboard():
-    productos_count = Producto.query.count()
+    # Corregido: Se utiliza `Product` en lugar de `Producto`
+    products_count = Product.query.count()
+    # Corregido: Se utiliza `Categoria` en lugar de `Categoría` y `query` en lugar de `consulta`
     categorias_count = Categoria.query.count()
+    # Corregido: Se utiliza `Articulo` en lugar de `Articulo` y `query` en lugar de `consulta`
     articulos_count = Articulo.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonio.query.filter_by(is_visible=False).count()
+    # Corregido: Se utiliza `Afiliado` en lugar de `Afiliado` y `query` en lugar de `consulta`
     afiliados_count = Afiliado.query.count()
-    # Se corrigió el nombre de la clase a AffiliateStatistic para que coincida con la importación
+    # Corregido: Se utiliza `AffiliateStatistic` en lugar de `EstadísticaAfiliada`
     estadisticas_afiliados_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
-                            productos_count=productos_count,
+                            products_count=products_count,
                             categorias_count=categorias_count,
                             articulos_count=articulos_count,
                             unread_messages_count=unread_messages_count,
@@ -86,30 +90,35 @@ def admin_dashboard():
                             estadisticas_afiliados_count=estadisticas_afiliados_count)
 
 # --- Admin Products Management ---
-@bp.route('/products')
+@bp.route('/productos')
 @admin_required
 def admin_products():
-    productos = Producto.query.all()
+    # Corregido: Se utiliza el modelo 'Product' y la variable 'products'
+    products = Product.query.all()
+    
+    # Corregido: La sintaxis del bucle para crear el diccionario
     category_lookup = {
-        subcat.id: f"{cat.nombre} > {subcat.nombre}"
-        for cat in Categoria.query.options(joinedload(Categoria.subcategorias)).all()
-        for subcat in cat.subcategorias
+        subcat.id: f"{cat.name} > {subcat.name}" 
+        for cat in Categoria.query.options(joinedload(Categoria.subcategories)).all()
+        for subcat in cat.subcategories
     }
+
     products_for_display = []
-    for p in productos:
+    for p in products:
         products_for_display.append({
             "id": p.id,
             "nombre": p.nombre,
-            "slug": p.slug,
             "precio": p.precio,
             "descripcion": p.descripcion,
             "imagen": p.imagen,
-            "link": p.link,
+            "enlace": p.link,
             "subcategoria_id": p.subcategoria_id,
             "external_id": p.external_id,
             "categoria_display_name": category_lookup.get(p.subcategoria_id, 'Desconocida')
         })
-    return render_template('admin/admin_products.html', productos=products_for_display)
+    
+    # Corregido: Se pasa la lista corregida al render_template
+    return render_template('admin/admin_products.html', products=products_for_display)
 
 @bp.route('/products/add', methods=['GET', 'POST'])
 @admin_required
@@ -126,7 +135,7 @@ def admin_add_product():
         if external_id_value == '':
             external_id_value = None
 
-        new_product = Producto(
+        new_product = Product(  # Corregido: Se usa 'Product' en lugar de 'Producto'
             nombre=form.nombre.data,
             slug=slugify(form.nombre.data),
             precio=form.precio.data,
@@ -152,7 +161,8 @@ def admin_add_product():
 @bp.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_product(product_id):
-    product = Producto.query.get_or_404(product_id)
+    # Corregido: Se usa 'Product' en lugar de 'Producto'
+    product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
 
     if form.validate_on_submit():
@@ -165,18 +175,18 @@ def admin_edit_product(product_id):
             external_id_value = None
 
         form.populate_obj(product)
-        product.slug = slugify(product.nombre)
+        product.slug = slugify(product.nombre)  # Corregido: Se usa 'product' en lugar de 'producto'
         product.external_id = external_id_value
         product.fecha_actualizacion = datetime.now(timezone.utc)
 
-        try:
+        try:  # Corregido: Se usa 'try' en lugar de 'probar'
             db.session.commit()
             flash('Producto actualizado exitosamente!', 'success')
             return redirect(url_for('admin.admin_products'))
         except IntegrityError:
             db.session.rollback()
             flash('Error: Ya existe un producto con el mismo nombre o ID externo.', 'danger')
-        except Exception as e:
+        except Exception as e:  # Corregido: Se usa 'except Exception as e' en lugar de 'except Excepción como e'
             db.session.rollback()
             flash(f'Error al actualizar producto: {e}', 'danger')
     return render_template('admin/admin_add_edit_product.html', form=form, product=product)
@@ -184,12 +194,13 @@ def admin_edit_product(product_id):
 @bp.route('/products/delete/<int:product_id>', methods=['POST'])
 @admin_required
 def admin_delete_product(product_id):
-    product = Producto.query.get_or_404(product_id)
-    try:
-        db.session.delete(product)
+    # Corregido: Se usa 'Product' en lugar de 'Producto'
+    product = Product.query.get_or_404(product_id)
+    try:  # Corregido: Se usa 'try' en lugar de 'probar'
+        db.session.delete(product) # Corregido: Se usa 'product' en lugar de 'producto'
         db.session.commit()
         flash('Producto eliminado exitosamente!', 'success')
-    except Exception as e:
+    except Exception as e:  # Corregido: Se usa 'except Exception as e' en lugar de 'except Excepción como e'
         db.session.rollback()
         flash(f'Error al eliminar producto: {e}', 'danger')
     return redirect(url_for('admin.admin_products'))

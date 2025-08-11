@@ -1,6 +1,6 @@
 import requests
 from app import db
-from models import Producto, Subcategoria
+from models import Product, Subcategoria
 from utils import slugify
 
 def fetch_and_update_products_from_external_api(api_url):

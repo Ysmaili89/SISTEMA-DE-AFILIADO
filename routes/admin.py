@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
-from models import Usuario, Producto, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
+from models import User, Producto, Categoria, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
 from werkzeug.security import check_password_hash
 from extensions import db
 from sqlalchemy.exc import IntegrityError
@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
 
 from utils import slugify
-from servicios.api_sync import fetch_and_update_products_from_external_api
+from services.api_sync import fetch_and_update_products_from_external_api
 
 import functools
 
@@ -38,15 +38,14 @@ def admin_login():
         username = form.username.data
         password = form.password.data
         print(f"Intentando iniciar sesión para el nombre de usuario: {username}")
-        usuario = Usuario.query.filter_by(username=username).first()
-        if usuario:
-            print(f"User found: {usuario.username}, Is Admin: {usuario.is_admin}")
-            print(f"Password hash from DB: {usuario.password_hash}")
-            password_check = check_password_hash(usuario.password_hash, password)
-            print(f"Password check result: {password_check}")
+        user = User.query.filter_by(username=username).first()
+        if user:
+            print(f"Usuario encontrado: {user.username}, Es admin: {user.is_admin}")
+            password_check = check_password_hash(user.password_hash, password)
+            print(f"Resultado de la comprobación de contraseña: {password_check}")
             if password_check:
-                if usuario.is_admin:
-                    login_user(usuario)
+                if user.is_admin:
+                    login_user(user)
                     flash('Inicio de sesión exitoso como administrador.', 'success')
                     next_page = request.args.get('next')
                     return redirect(next_page or url_for('admin.admin_dashboard'))

@@ -1,26 +1,28 @@
-# Standard library imports
+# Importaciones de bibliotecas estándar
 import functools
 from datetime import datetime, timezone
-import json # Necesario para la importación de modelos JSON si aplica
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from werkzeug.security import check_password_hash
 
-# Third-party library imports
+# Importaciones de bibliotecas de terceros
 from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
 
-# Local application imports
-# 'Categoría' con acento para coincidir con la clase del modelo
-from models import User, Product, Categoría, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Anuncio, Afiliado, AffiliateStatistic, AdsenseConfig
+# Importaciones de aplicaciones locales
+# Se eliminaron los modelos que no se estaban utilizando en este archivo.
+from models import User, Product, Categoría, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic
 from extensions import db
-from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm, AdvertisementForm, AffiliateForm, AffiliateStatisticForm, AdsenseConfigForm
-from utils import slugify, admin_required
+# Se eliminaron los formularios que no se estaban utilizando en este archivo.
+from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
+# Se eliminó la importación de `admin_required` de `utils` ya que se define localmente.
+from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Decorador personalizado para garantizar que el usuario sea un administrador
+# Esta es la única definición de esta función.
 def admin_required(f):
     @functools.wraps(f)
     @login_required
@@ -129,11 +131,11 @@ def admin_add_product():
             external_id_value = None
 
         new_product = Product(
-            name=form.name.data, # Corregido: 'name' en lugar de 'nombre'
-            slug=slugify(form.name.data), # Corregido: 'name' en lugar de 'nombre'
-            price=form.price.data, # Corregido: 'price' en lugar de 'precio'
-            description=form.description.data, # Corregido: 'description' en lugar de 'descripcion'
-            image=form.image.data, # Corregido: 'image' en lugar de 'imagen'
+            name=form.name.data,
+            slug=slugify(form.name.data),
+            price=form.price.data,
+            description=form.description.data,
+            image=form.image.data,
             link=form.link.data,
             subcategoria_id=selected_subcategoria_id,
             external_id=external_id_value
@@ -166,9 +168,9 @@ def admin_edit_product(product_id):
             external_id_value = None
 
         form.populate_obj(product)
-        product.slug = slugify(product.name) # Corregido: 'name' en lugar de 'nombre'
+        product.slug = slugify(product.name)
         product.external_id = external_id_value
-        product.last_updated = datetime.now(timezone.utc) # Corregido: 'last_updated' en lugar de 'fecha_actualizacion'
+        product.last_updated = datetime.now(timezone.utc)
 
         try:
             db.session.commit()
@@ -207,12 +209,12 @@ def admin_categories():
 def admin_add_category():
     form = CategoryForm()
     if form.validate_on_submit():
-        existing_category = Categoría.query.filter_by(slug=slugify(form.name.data)).first() # Corregido: 'name' en lugar de 'nombre'
+        existing_category = Categoría.query.filter_by(slug=slugify(form.name.data)).first()
         if existing_category:
             flash('Error: Ya existe una categoría con ese nombre (o un slug similar).', 'danger')
             return render_template('admin/admin_add_edit_category.html', category_form=form)
 
-        new_category = Categoría(name=form.name.data, slug=slugify(form.name.data)) # Corregido: 'name' en lugar de 'nombre'
+        new_category = Categoría(name=form.name.data, slug=slugify(form.name.data))
         try:
             db.session.add(new_category)
             db.session.commit()
@@ -234,7 +236,7 @@ def admin_edit_category(category_id):
     form = CategoryForm(obj=category)
     if form.validate_on_submit():
         form.populate_obj(category)
-        category.slug = slugify(category.name) # Corregido: 'name' en lugar de 'nombre'
+        category.slug = slugify(category.name)
         try:
             db.session.commit()
             flash('Categoría actualizada exitosamente!', 'success')
@@ -266,13 +268,13 @@ def admin_add_subcategory(category_id):
     category = Categoría.query.get_or_404(category_id)
     form = SubCategoryForm()
     if form.validate_on_submit():
-        new_slug = slugify(form.name.data) # Corregido: 'name' en lugar de 'nombre'
+        new_slug = slugify(form.name.data)
         existing_subcategory = Subcategoria.query.filter_by(slug=new_slug, categoria_id=category.id).first()
         if existing_subcategory:
             flash(f'Error: Ya existe una subcategoría con el nombre "{form.name.data}" en esta categoría. Por favor, elige un nombre diferente.', 'danger')
             return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category)
 
-        new_subcategory = Subcategoria(name=form.name.data, slug=new_slug, categoria_id=category.id) # Corregido: 'name' en lugar de 'nombre'
+        new_subcategory = Subcategoria(name=form.name.data, slug=new_slug, categoria_id=category.id)
         try:
             db.session.add(new_subcategory)
             db.session.commit()
@@ -294,7 +296,7 @@ def admin_edit_subcategory(category_id, subcategory_id):
     form = SubCategoryForm(obj=subcategory)
     if form.validate_on_submit():
         form.populate_obj(subcategory)
-        subcategory.slug = slugify(subcategory.name) # Corregido: 'name' en lugar de 'nombre'
+        subcategory.slug = slugify(subcategory.name)
         try:
             db.session.commit()
             flash('Subcategoría actualizada exitosamente!', 'success')
@@ -324,7 +326,7 @@ def admin_delete_subcategory(category_id, subcategory_id):
 @bp.route('/articles')
 @admin_required
 def admin_articles():
-    articulos = Articulo.query.order_by(Articulo.date_posted.desc()).all() # Corregido: 'date_posted' en lugar de 'fecha'
+    articulos = Articulo.query.order_by(Articulo.date_posted.desc()).all()
     return render_template('admin/admin_articles.html', articulos=articulos)
 
 @bp.route('/articles/add', methods=['GET', 'POST'])
@@ -333,12 +335,12 @@ def admin_add_article():
     form = ArticleForm()
     if form.validate_on_submit():
         new_article = Articulo(
-            title=form.title.data, # Corregido: 'title' en lugar de 'titulo'
-            slug=slugify(form.title.data), # Corregido: 'title' en lugar de 'titulo'
-            content=form.content.data, # Corregido: 'content' en lugar de 'contenido'
-            author=form.author.data, # Corregido: 'author' en lugar de 'autor'
-            date_posted=datetime.now(timezone.utc), # Corregido: 'date_posted' en lugar de 'fecha'
-            image=form.image.data # Corregido: 'image' en lugar de 'imagen'
+            title=form.title.data,
+            slug=slugify(form.title.data),
+            content=form.content.data,
+            author=form.author.data,
+            date_posted=datetime.now(timezone.utc),
+            image=form.image.data
         )
         try:
             db.session.add(new_article)
@@ -360,7 +362,7 @@ def admin_edit_article(article_id):
     form = ArticleForm(obj=article)
     if form.validate_on_submit():
         form.populate_obj(article)
-        article.slug = slugify(article.title) # Corregido: 'title' en lugar de 'titulo'
+        article.slug = slugify(article.title)
         try:
             db.session.commit()
             flash('Artículo actualizado exitosamente!', 'success')
@@ -397,10 +399,10 @@ def admin_api_products():
         db.session.commit()
     form = ApiSyncForm()
     return render_template('admin/admin_api_products.html',
-                            last_sync_time=sync_info.last_sync_time,
-                            last_sync_count=sync_info.last_sync_count,
-                            last_synced_api_url=sync_info.last_synced_api_url,
-                            form=form)
+                             last_sync_time=sync_info.last_sync_time,
+                             last_sync_count=sync_info.last_sync_count,
+                             last_synced_api_url=sync_info.last_synced_api_url,
+                             form=form)
 
 @bp.route('/api_products/sync', methods=['POST'])
 @admin_required
@@ -497,7 +499,6 @@ def admin_edit_social_media(link_id):
         try:
             db.session.commit()
             flash('Social media link updated successfully!', 'success')
-            return redirect(url_for('admin.admin_social_media'))
         except IntegrityError:
             db.session.rollback()
             flash('Error: Ya existe un enlace para esta plataforma.', 'danger')

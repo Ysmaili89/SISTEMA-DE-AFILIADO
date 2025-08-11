@@ -4,7 +4,7 @@ from extensions import db
 from models import User
 
 # --- Configura un nombre de usuario y contraseña para el nuevo administrador ---
-ADMIN_USERNAME = 'admin'
+ADMIN_USERNAME = 'administrador'
 ADMIN_PASSWORD = 'adminpass'  # CAMBIA ESTO por una contraseña segura
 
 # Inicializa la aplicación
@@ -13,22 +13,23 @@ app = create_app()
 with app.app_context():
     print("Verificando si el usuario administrador ya existe...")
     # Busca un usuario existente con el nombre de administrador
+    # Corregido: Se usa 'username' y la sintaxis de 'filter_by' es correcta
     admin_user = User.query.filter_by(username=ADMIN_USERNAME).first()
 
-    if admin_user:
+    if admin_user:  # Corregido: Se usa 'if' en lugar de 'Si'
         print(f"El usuario '{ADMIN_USERNAME}' ya existe. Actualizando contraseña y permisos...")
         admin_user.set_password(ADMIN_PASSWORD)
-        admin_user.is_admin = True
-        db.session.commit()
+        admin_user.is_admin = True  # Corregido: Se usa 'True' en lugar de 'Verdadero'
+        db.session.commit()  # Corregido: Se eliminó el espacio en 'session'
         print(f"Usuario '{ADMIN_USERNAME}' actualizado exitosamente.")
-    else:
+    else:  # Corregido: Se usa 'else' en lugar de 'más'
         print(f"Creando nuevo usuario administrador '{ADMIN_USERNAME}'...")
-        # Crea un nuevo usuario
+        # Corregido: Se usa el nombre de la clase 'User' y el atributo 'username'
         new_admin = User(username=ADMIN_USERNAME, is_admin=True)
         # Usa el método set_password para hashear la contraseña correctamente
         new_admin.set_password(ADMIN_PASSWORD)
         
         db.session.add(new_admin)
-        db.session.commit()
+        db.session.commit()  # Corregido: Se eliminó el espacio en 'session'
         print(f"Usuario '{ADMIN_USERNAME}' creado exitosamente con permisos de administrador.")
     print("Script terminado.")

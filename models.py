@@ -192,7 +192,7 @@ class AffiliateStatistic(db.Model):
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
 
-    affiliate = db.relationship('Afiliado', backref='statistics', lazy=True)
+    affiliate = db.relationship('Affiliate', backref='statistics', lazy=True)
 
     def __repr__(self):
         return f'<AffiliateStatistic Affiliate: {self.affiliate_id}, Date: {self.date}>'

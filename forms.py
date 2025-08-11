@@ -9,8 +9,7 @@ from wtforms.validators import (
     DataRequired, URL, NumberRange, Optional, Length, ValidationError, Email
 )
 from wtforms_sqlalchemy.fields import QuerySelectField
-from models import Product, Afiliado, Categoria, Subcategoria
-# --- Custom validator for relative paths or full URLs ---
+from models import Product, Affiliate, Category, Subcategory
 def validate_image_path(form, field):
     """
     Validates that the image URL is a web path or a valid local path.

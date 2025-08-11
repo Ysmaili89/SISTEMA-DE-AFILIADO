@@ -22,7 +22,6 @@ load_dotenv()
 
 # Definir el plan 'publico'
 bp = Blueprint('publico', __name__)
-
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:

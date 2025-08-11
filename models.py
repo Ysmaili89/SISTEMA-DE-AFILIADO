@@ -77,7 +77,7 @@ class Article(db.Model):
     slug = db.Column(db.String(200), unique=True, nullable=False)
     content = db.Column(db.Text, nullable=False)
     author = db.Column(db.String(100), nullable=False)
-    date = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    date_posted = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     image = db.Column(db.String(255), nullable=True)
 
     def __repr__(self):
@@ -199,7 +199,7 @@ class AffiliateStatistic(db.Model):
 
 # ---
 class AdsenseConfig(db.Model):
-    """Model for AdSense configuration."""
+    """Modelo para la configuración de AdSense."""
     __tablename__ = 'adsense_configs'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)

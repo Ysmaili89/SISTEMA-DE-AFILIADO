@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 # Importaciones de aplicaciones locales
 from models import (
-    Producto, Categoria, Subcategoria, Articulo, ContactMessage,
+    Product, Category, Subcategory, Article, ContactMessage,
     Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
 )
 from forms import PublicTestimonialForm
@@ -45,14 +45,14 @@ def get_all_products_for_chatbot():
     Handles possible database errors.
     """
     try:
-        products = Producto.query.all()
+        products = Product.query.all()
         products_data = []
         for p in products:
             products_data.append({
                 "id": p.id,
-                "name": p.nombre,
-                "price": p.precio,
-                "description": p.descripcion,
+                "name": p.name,
+                "price": p.price,
+                "description": p.description,
                 "link": p.link
             })
         return products_data
@@ -67,13 +67,13 @@ def get_product_by_name_for_chatbot(product_name):
     Returns a dictionary with product details or a message if not found or an error occurs.
     """
     try:
-        product = Producto.query.filter(func.lower(Producto.nombre) == func.lower(product_name)).first()
+        product = Product.query.filter(func.lower(Product.name) == func.lower(product_name)).first()
         if product:
             return {
                 "id": product.id,
-                "name": product.nombre,
-                "price": product.precio,
-                "description": product.descripcion,
+                "name": product.name,
+                "price": product.price,
+                "description": product.description,
                 "link": product.link
             }
         return {"message": f"Product '{product_name}' not found."}
@@ -87,7 +87,7 @@ def get_available_categories():
     Handles possible database errors.
     """
     try:
-        categories = [cat.nombre for cat in Categoria.query.all()]
+        categories = [cat.name for cat in Category.query.all()]
         return {"categories": categories}
     except Exception as e:
         print(f"Error getting available categories: {e}")
@@ -154,7 +154,6 @@ def inject_adsense_config():
             adsense_slot_footer=''
         )
 
-
 # --- Public Routes ---
 
 @bp.route('/')
@@ -162,105 +161,104 @@ def index():
     """Renders the main index page with paginated products."""
     page = request.args.get('page', 1, type=int)
     per_page = 9
-    productos_pagination = Producto.query.order_by(Producto.fecha_creacion.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    productos = productos_pagination.items
-    total_pages = productos_pagination.pages
-    return render_template('index.html', productos=productos, page=page, total_pages=total_pages)
+    products_pagination = Product.query.order_by(Product.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    products = products_pagination.items
+    total_pages = products_pagination.pages
+    return render_template('index.html', products=products, page=page, total_pages=total_pages)
 
-@bp.route('/producto/<slug>')
+@bp.route('/product/<slug>')
 def product_detail(slug):
     """Renders the detail page for a specific product based on its slug."""
-    producto = Producto.query.filter_by(slug=slug).first()
-    if producto:
-        return render_template('product_detail.html', product=producto)
+    product = Product.query.filter_by(slug=slug).first()
+    if product:
+        return render_template('product_detail.html', product=product)
     flash('Producto no encontrado.', 'danger')
     return redirect(url_for('publico.index'))
 
-@bp.route('/categorias')
-def show_categorias():
+@bp.route('/categories')
+def show_categories():
     """Renders the categories page, displaying all categories and product counts per subcategory."""
-    categorias = Categoria.query.all()
+    categories = Category.query.all()
     product_counts_raw = db.session.query(
-        Subcategoria.id,
-        func.count(Producto.id)
-    ).outerjoin(Producto, Subcategoria.id == Producto.subcategoria_id) \
-        .group_by(Subcategoria.id) \
+        Subcategory.id,
+        func.count(Product.id)
+    ).outerjoin(Product, Subcategory.id == Product.subcategory_id) \
+        .group_by(Subcategory.id) \
         .all()
     product_counts_dict = {sub_id: count for sub_id, count in product_counts_raw}
     return render_template(
         'categorias.html',
-        categorias=categorias,
+        categories=categories,
         product_counts=product_counts_dict
     )
 
-@bp.route('/productos/<slug>')
-def productos_por_slug(slug):
+@bp.route('/products/<slug>')
+def products_by_slug(slug):
     """Renders a page displaying products within a specific subcategory based on its slug."""
-    subcat = Subcategoria.query.filter_by(slug=slug).first()
+    subcat = Subcategory.query.filter_by(slug=slug).first()
     if subcat:
         page = request.args.get('page', 1, type=int)
         per_page = 9
-        products_pagination = Producto.query.filter_by(subcategoria_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
+        products_pagination = Product.query.filter_by(subcategory_id=subcat.id).paginate(page=page, per_page=per_page, error_out=False)
         products_in_subcat = products_pagination.items
         total_pages = products_pagination.pages
         return render_template('productos_por_subcategoria.html',
-                            subcat_name=subcat.nombre,
-                            productos=products_in_subcat,
-                            page=page,
-                            total_pages=total_pages)
+                               subcat_name=subcat.name,
+                               products=products_in_subcat,
+                               page=page,
+                               total_pages=total_pages)
     flash('Subcategoría no encontrada.', 'danger')
-    return redirect(url_for('publico.show_categorias'))
+    return redirect(url_for('publico.show_categories'))
 
-@bp.route('/guias')
-def guias():
+@bp.route('/guides')
+def guides():
     """Renders the guides page with paginated articles."""
     page = request.args.get('page', 1, type=int)
     per_page = 6
-    articulo_pagination = Articulo.query.order_by(Articulo.fecha.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    articulos_db = articulo_pagination.items
-    total_pages = articulo_pagination.pages
-    articulos = []
-    for art in articulos_db:
+    articles_pagination = Article.query.order_by(Article.date_posted.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    articles_db = articles_pagination.items
+    total_pages = articles_pagination.pages
+    articles = []
+    for art in articles_db:
         # Normalizar la fecha a datetime con timezone
-        fecha_dt = art.fecha
-        if isinstance(art.fecha, date) and not isinstance(art.fecha, datetime):
-            fecha_dt = datetime.combine(art.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(art.fecha, datetime) and art.fecha.tzinfo is None:
-            fecha_dt = art.fecha.replace(tzinfo=timezone.utc)
+        date_dt = art.date_posted
+        if isinstance(art.date_posted, date) and not isinstance(art.date_posted, datetime):
+            date_dt = datetime.combine(art.date_posted, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(art.date_posted, datetime) and art.date_posted.tzinfo is None:
+            date_dt = art.date_posted.replace(tzinfo=timezone.utc)
 
-        articulos.append({
-            "titulo": art.titulo,
+        articles.append({
+            "title": art.title,
             "slug": art.slug,
-            "contenido": art.contenido,
-            "fecha_iso": fecha_dt.strftime("%Y-%m-%d") if fecha_dt else "",
-            "fecha_formateada": fecha_dt.strftime("%d %b %Y") if fecha_dt else "",
+            "content": art.content,
+            "date_iso": date_dt.strftime("%Y-%m-%d") if date_dt else "",
+            "formatted_date": date_dt.strftime("%d %b %Y") if date_dt else "",
         })
-    return render_template('guias.html', articulos=articulos, page=page, total_pages=total_pages)
+    return render_template('guias.html', articles=articles, page=page, total_pages=total_pages)
 
-@bp.route('/guia/<slug>')
-def guia_detalle(slug):
+@bp.route('/guide/<slug>')
+def guide_detail(slug):
     """Renders the detail page for a specific article based on its slug."""
-    articulo = Articulo.query.filter_by(slug=slug).first()
-    if articulo:
+    article = Article.query.filter_by(slug=slug).first()
+    if article:
         # Normalizar la fecha a datetime con timezone antes de pasarla a la plantilla
-        if isinstance(articulo.fecha, date) and not isinstance(articulo.fecha, datetime):
-            articulo.fecha = datetime.combine(articulo.fecha, datetime.min.time()).replace(tzinfo=timezone.utc)
-        elif isinstance(articulo.fecha, datetime) and articulo.fecha.tzinfo is None:
-            articulo.fecha = articulo.fecha.replace(tzinfo=timezone.utc)
-        return render_template('guia_detalle.html', articulo=articulo)
+        if isinstance(article.date_posted, date) and not isinstance(article.date_posted, datetime):
+            article.date_posted = datetime.combine(article.date_posted, datetime.min.time()).replace(tzinfo=timezone.utc)
+        elif isinstance(article.date_posted, datetime) and article.date_posted.tzinfo is None:
+            article.date_posted = article.date_posted.replace(tzinfo=timezone.utc)
+        return render_template('guia_detalle.html', article=article)
     flash('Artículo no encontrado.', 'danger')
-    return redirect(url_for('publico.guias'))
+    return redirect(url_for('publico.guides'))
 
-
-@bp.route('/acerca-de', methods=['GET', 'POST'])
-def acerca_de():
+@bp.route('/about', methods=['GET', 'POST'])
+def about():
     testimonial_form = PublicTestimonialForm()
 
     if testimonial_form.validate_on_submit():
         # Honeypot check for spam, redirect silently if filled
         if testimonial_form.fax_number.data:
             print("Spam detected: honeypot field filled for testimonial submission.")
-            return redirect(url_for('publico.acerca_de'))
+            return redirect(url_for('publico.about'))
 
         try:
             new_testimonial = Testimonial(
@@ -272,7 +270,7 @@ def acerca_de():
             db.session.add(new_testimonial)
             db.session.commit()
             flash('¡Gracias por tu testimonio! Será revisado y, si es aprobado, aparecerá pronto en nuestra página.', 'success')
-            return redirect(url_for('publico.acerca_de'))
+            return redirect(url_for('publico.about'))
         except Exception as e:
             db.session.rollback()
             flash(f'Ocurrió un error al enviar tu testimonio. Por favor, inténtalo de nuevo. Detalles: {e}', 'danger')
@@ -282,35 +280,35 @@ def acerca_de():
     testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.date_posted.desc()).all()
     return render_template('about.html', testimonials=testimonials, testimonial_form=testimonial_form)
 
-@bp.route('/contacto', methods=['GET', 'POST'])
-def contacto():
+@bp.route('/contact', methods=['GET', 'POST'])
+def contact():
     """Renders the contact page and handles form submissions."""
     errors = {}
     success = False
 
     if request.method == 'POST':
-        nombre = request.form.get('nombre')
+        name = request.form.get('name')
         email = request.form.get('email')
-        mensaje = request.form.get('mensaje')
+        message = request.form.get('message')
         fax_number = request.form.get('fax_number')
 
-        if not nombre:
-            errors['nombre'] = 'El nombre es obligatorio.'
+        if not name:
+            errors['name'] = 'El nombre es obligatorio.'
         if not email or '@' not in email:
             errors['email'] = 'Introduce un correo electrónico válido.'
-        if not mensaje:
-            errors['mensaje'] = 'El mensaje es obligatorio.'
+        if not message:
+            errors['message'] = 'El mensaje es obligatorio.'
 
         if fax_number:
             print("Spam detected: honeypot field filled.")
-            return redirect(url_for('publico.contacto'))
+            return redirect(url_for('publico.contact'))
 
         if not errors:
             try:
                 new_message = ContactMessage(
-                    name=nombre,
+                    name=name,
                     email=email,
-                    message=mensaje,
+                    message=message,
                     timestamp=datetime.now(timezone.utc)
                 )
                 db.session.add(new_message)
@@ -326,17 +324,17 @@ def contacto():
 
     return render_template('contact.html', success=success, errors=errors)
 
-@bp.route('/politica-de-privacidad')
+@bp.route('/privacy-policy')
 def privacy_policy():
     """Renders the privacy policy page."""
     return render_template('privacy_policy.html')
 
-@bp.route('/terminos-condiciones')
+@bp.route('/terms-conditions')
 def terms_conditions():
     """Renders the terms and conditions page."""
     return render_template('terms_conditions.html')
 
-@bp.route('/politica-de-cookies')
+@bp.route('/cookie-policy')
 def cookie_policy():
     """Renders the cookie policy page."""
     return render_template('cookie_policy.html')
@@ -347,23 +345,23 @@ def sitemap():
     base_url = request.url_root.rstrip('/')
     urls = [
         {"loc": base_url + url_for('publico.index'), "changefreq": "daily", "priority": "1.0"},
-        {"loc": base_url + url_for('publico.show_categorias'), "changefreq": "weekly", "priority": "0.8"},
-        {"loc": base_url + url_for('publico.acerca_de'), "changefreq": "monthly", "priority": "0.7"},
-        {"loc": base_url + url_for('publico.contacto'), "changefreq": "monthly", "priority": "0.6"},
-        {"loc": base_url + url_for('publico.guias'), "changefreq": "weekly", "priority": "0.9"},
+        {"loc": base_url + url_for('publico.show_categories'), "changefreq": "weekly", "priority": "0.8"},
+        {"loc": base_url + url_for('publico.about'), "changefreq": "monthly", "priority": "0.7"},
+        {"loc": base_url + url_for('publico.contact'), "changefreq": "monthly", "priority": "0.6"},
+        {"loc": base_url + url_for('publico.guides'), "changefreq": "weekly", "priority": "0.9"},
         {"loc": base_url + url_for('publico.privacy_policy'), "changefreq": "monthly", "priority": "0.5"},
         {"loc": base_url + url_for('publico.terms_conditions'), "changefreq": "monthly", "priority": "0.5"},
         {"loc": base_url + url_for('publico.cookie_policy'), "changefreq": "monthly", "priority": "0.5"},
     ]
-    for product in Producto.query.all():
+    for product in Product.query.all():
         urls.append({
             "loc": f"{base_url}{url_for('publico.product_detail', slug=product.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
-    for articulo in Articulo.query.all():
+    for article in Article.query.all():
         urls.append({
-            "loc": f"{base_url}{url_for('publico.guia_detalle', slug=articulo.slug)}",
+            "loc": f"{base_url}{url_for('publico.guide_detail', slug=article.slug)}",
             "changefreq": "weekly",
             "priority": "0.8"
         })
@@ -378,7 +376,7 @@ def robots_txt():
         "Sitemap: " + request.url_root.rstrip('/') + url_for('publico.sitemap') + "\n"
     )
 
-@bp.route('/buscar')
+@bp.route('/search')
 def search_results():
     """
     Renders the search results page, searching both products and articles.
@@ -387,38 +385,38 @@ def search_results():
     page = request.args.get('page', 1, type=int)
     per_page = 9
 
-    productos_found = []
-    articulos_found = []
+    products_found = []
+    articles_found = []
     total_pages = 1
 
     if query:
-        products_query = Producto.query.filter(
-            (Producto.nombre.ilike(f'%{query}%')) |
-            (Producto.descripcion.ilike(f'%{query}%'))
+        products_query = Product.query.filter(
+            (Product.name.ilike(f'%{query}%')) |
+            (Product.description.ilike(f'%{query}%'))
         )
-        articles_query = Articulo.query.filter(
-            (Articulo.titulo.ilike(f'%{query}%')) |
-            (Articulo.contenido.ilike(f'%{query}%'))
+        articles_query = Article.query.filter(
+            (Article.title.ilike(f'%{query}%')) |
+            (Article.content.ilike(f'%{query}%'))
         )
 
-        productos_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
-        productos_found = productos_pagination.items
+        products_pagination = products_query.paginate(page=page, per_page=per_page, error_out=False)
+        products_found = products_pagination.items
 
-        total_products_pages = productos_pagination.pages
+        total_products_pages = products_pagination.pages
 
-        articulos_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
-        articulos_found = articulos_pagination.items
+        articles_pagination = articles_query.paginate(page=page, per_page=per_page, error_out=False)
+        articles_found = articles_pagination.items
 
-        total_articles_pages = articulos_pagination.pages
+        total_articles_pages = articles_pagination.pages
 
-        total_pages = max(total_products_pages, total_articles_pages) if productos_found or articulos_found else 1
+        total_pages = max(total_products_pages, total_articles_pages) if products_found or articles_found else 1
 
     return render_template('search_results.html',
-                        query=query,
-                        productos=productos_found,
-                        articulos=articulos_found,
-                        page=page,
-                        total_pages=total_pages)
+                           query=query,
+                           products=products_found,
+                           articles=articles_found,
+                           page=page,
+                           total_pages=total_pages)
 
 ### Interfaz de usuario de afiliados y rutas API
 

@@ -1,10 +1,10 @@
 # app.py
-# Importaciones de bibliotecas estándar
+# Standard library imports
 import os
 import click
 from datetime import datetime, timezone, date
 
-# Importaciones de terceros
+# Third-party imports
 from flask import Flask, render_template
 from flask_babel import Babel
 from flask_migrate import Migrate
@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 import markdown
 
-# Importaciones de aplicaciones locales
+# Local application imports
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Category, Subcategory,
@@ -23,58 +23,58 @@ from models import (
 )
 from utils import slugify
 
-# Para formato de moneda
+# For currency formatting
 from babel.numbers import format_currency as babel_format_currency
-# -------------------- CARGAR VARIABLES DE ENTORNO --------------------
-# Esto es para desarrollo local. En Render, las variables de entorno se establecen directamente.
+
+# -------------------- LOAD ENVIRONMENT VARIABLES --------------------
+# This is for local development. On Render, environment variables are set directly.
 load_dotenv()
 
-# -------------------- CONFIGURACIÓN DE FLASK-BABEL --------------------
+# -------------------- FLASK-BABEL CONFIGURATION --------------------
 def get_application_locale():
-    # Esta función determina el 'locale' para Flask-Babel
+    # This function determines the 'locale' for Flask-Babel
     return 'es'
 
-# -------------------- INYECTAR DATOS GLOBALES --------------------
+# -------------------- INJECT GLOBAL DATA --------------------
 def inject_social_media_links():
-    # Inyecta enlaces de redes sociales en el contexto de Jinja2
+    # Injects social media links into the Jinja2 context
     links = SocialMediaLink.query.filter_by(is_visible=True).order_by(SocialMediaLink.order_num).all()
     return dict(social_media_links=links)
 
-# -------------------- FÁBRICA DE APLICACIONES PRINCIPALES --------------------
+# -------------------- MAIN APPLICATION FACTORY --------------------
 def create_app():
     app = Flask(__name__)
 
-    # ----------- CONFIGURACIONES BÁSICAS -----------
+    # ----------- BASIC CONFIGURATIONS -----------
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_very_secret_key_for_dev_only')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['BABEL_DEFAULT_LOCALE'] = 'es'
 
-    # ----------- EXTENSIONES -----------
+    # ----------- EXTENSIONS -----------
     db.init_app(app)
     login_manager.init_app(app)
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    csrf = CSRFProtect(app) 
+    csrf = CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
 
     # --------------------------------------------------------------------------
-    # CORRECCIÓN: Se ha eliminado el bloque de código que borraba y recreaba
-    # la base de datos en cada inicio. Ahora se debe usar Flask-Migrate para
-    # gestionar los cambios en la base de datos.
+    # NOTE: The code block that dropped and recreated the database on each start
+    # has been removed. Use Flask-Migrate to manage database schema changes.
     # --------------------------------------------------------------------------
     with app.app_context():
-        # ADVERTENCIA: Se comenta db.create_all() para evitar conflictos con Flask-Migrate.
+        # WARNING: db.create_all() is commented out to prevent conflicts with Flask-Migrate.
         # db.create_all()
         pass
     
-    # Después de corregir esto, se debe usar Flask-Migrate para las actualizaciones del esquema.
-    # Comandos:
-    # 1. flask db init (solo la primera vez)
-    # 2. flask db migrate -m "Mensaje de la migración"
+    # After correcting this, use Flask-Migrate for schema updates.
+    # Commands:
+    # 1. flask db init (only the first time)
+    # 2. flask db migrate -m "Your migration message"
     # 3. flask db upgrade
 
     # ----------- BLUEPRINTS -----------
@@ -85,7 +85,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(api_bp)
 
-    # ----------- INYECCIÓN DE CONTEXTO GLOBAL -----------
+    # ----------- GLOBAL CONTEXT INJECTION -----------
     app.context_processor(inject_social_media_links)
 
     @app.context_processor
@@ -114,7 +114,7 @@ def create_app():
     def inject_now():
         return {'now': datetime.now(timezone.utc)}
 
-    # ----------- FILTROS JINJA2 PERSONALIZADOS -----------
+    # ----------- CUSTOM JINJA2 FILTERS -----------
     @app.template_filter('markdown')
     def markdown_filter(text):
         return markdown.markdown(text)
@@ -132,24 +132,24 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- COMANDOS DE CLI PERSONALIZADOS -----------
+    # ----------- CUSTOM CLI COMMANDS -----------
     @app.cli.command('seed-db')
     def seed_initial_data():
-        """Crea datos iniciales para la aplicación si no existen."""
+        """Creates initial data for the application if it does not exist."""
         with app.app_context():
-            print("⚙️ Creando datos iniciales...")
+            print("⚙️ Creating initial data...")
             
             if User.query.first():
-                print("ℹ️ Los usuarios ya existen. Saltando la creación de datos iniciales.")
+                print("ℹ️ Users already exist. Skipping initial data creation.")
                 return
 
             admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
             db.session.add(admin_user)
 
-            if not Affiliate.query.filter_by(email='afiliado@example.com').first():
+            if not Affiliate.query.filter_by(email='affiliate@example.com').first():
                 db.session.add(Affiliate(
-                    name='Afiliado de Prueba',
-                    email='afiliado@example.com',
+                    name='Test Affiliate',
+                    email='affiliate@example.com',
                     referral_link='http://localhost:5000/ref/1',
                     is_active=True
                 ))
@@ -163,46 +163,46 @@ def create_app():
                     adsense_slot_article_bottom='4444444444'
                 ))
 
-            categorias = {
-                'Tecnología': ['Smartphones', 'Laptops'],
-                'Hogar': ['Cocina', 'Jardín'],
-                'Deportes': ['Fitness']
+            categories = {
+                'Technology': ['Smartphones', 'Laptops'],
+                'Home': ['Kitchen', 'Garden'],
+                'Sports': ['Fitness']
             }
-            subcategorias_db = {}
-            for cat_nombre, sub_nombres in categorias.items():
-                categoria = Category(name=cat_nombre, slug=slugify(cat_nombre))
-                db.session.add(categoria)
+            subcategories_db = {}
+            for cat_name, sub_names in categories.items():
+                category = Category(name=cat_name, slug=slugify(cat_name))
+                db.session.add(category)
                 db.session.flush()
-                for sub_nombre in sub_nombres:
-                    subcategoria = Subcategory(name=sub_nombre, slug=slugify(sub_nombre), category=categoria)
-                    db.session.add(subcategoria)
-                    subcategorias_db[sub_nombre] = subcategoria
+                for sub_name in sub_names:
+                    subcategory = Subcategory(name=sub_name, slug=slugify(sub_name), category=category)
+                    db.session.add(subcategory)
+                    subcategories_db[sub_name] = subcategory
 
-            # Genera 50 productos de ejemplo
-            subcategorias_list = list(subcategorias_db.values())
+            # Generate 50 sample products
+            subcategories_list = list(subcategories_db.values())
             for i in range(1, 51):
-                nombre = f"Producto Ejemplo {i}"
-                precio = 10.0 + (i * 5)
-                desc = f"Descripción detallada del Producto {i}. Este es un producto fantástico con muchas características."
+                name = f"Sample Product {i}"
+                price = 10.0 + (i * 5)
+                desc = f"Detailed description for Product {i}. This is a fantastic product with many features."
                 
-                # Asigna productos a las subcategorías de manera cíclica
-                subcat = subcategorias_list[i % len(subcategorias_list)]
+                # Assign products to subcategories cyclically
+                subcat = subcategories_list[i % len(subcategories_list)]
                 
                 db.session.add(Product(
-                    name=nombre,
-                    slug=slugify(nombre),
-                    price=precio,
+                    name=name,
+                    slug=slugify(name),
+                    price=price,
                     description=desc,
-                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(nombre)}',
-                    link=f'https://ejemplo.com/{slugify(nombre)}',
+                    image=f'https://placehold.co/400x300/e0e0e0/555555?text={slugify(name)}',
+                    link=f'https://example.com/{slugify(name)}',
                     subcategory_id=subcat.id
                 ))
 
-            articulos = [
-                ('Guía para elegir tu primer smartphone', 'Contenido guía smartphone...', 'Equipo Afiliados Online', 'Smartphone'),
-                ('Recetas con tu nueva batidora', 'Contenido recetas batidora...', 'Chef Invitado', 'Batidora'),
+            articles = [
+                ('Guide to choosing your first smartphone', 'Content for smartphone guide...', 'Affiliates Team', 'Smartphone'),
+                ('Recipes with your new blender', 'Content for blender recipes...', 'Guest Chef', 'Blender'),
             ]
-            for title, content, author, image_text in articulos:
+            for title, content, author, image_text in articles:
                 db.session.add(Article(
                     title=title,
                     slug=slugify(title),
@@ -212,19 +212,19 @@ def create_app():
                     image=f'https://placehold.co/800x400/e0e0e0/555555?text={image_text}'
                 ))
 
-            redes = [
+            social_links = [
                 ('Facebook', 'https://facebook.com', 'fab fa-facebook-f'),
                 ('X', 'https://x.com', 'fab fa-x-twitter'),
                 ('Instagram', 'https://instagram.com', 'fab fa-instagram'),
                 ('YouTube', 'https://youtube.com', 'fab fa-youtube'),
                 ('LinkedIn', 'https://linkedin.com', 'fab fa-linkedin-in'),
             ]
-            for name, url, icon in redes:
+            for name, url, icon in social_links:
                 db.session.add(SocialMediaLink(platform=name, url=url, icon_class=icon, is_visible=True))
 
             db.session.add(Testimonial(
-                author="Juan Pérez",
-                content="¡Excelente sitio! Encontré el producto perfecto.",
+                author="John Doe",
+                content="Excellent site! I found the perfect product.",
                 date_posted=datetime.now(timezone.utc),
                 is_visible=True,
                 likes=5,
@@ -232,39 +232,39 @@ def create_app():
             ))
 
             db.session.commit()
-            print("✅ Datos iniciales creados.")
+            print("✅ Initial data created.")
 
     app.cli.add_command(seed_initial_data)
 
-    # ----------- ADMINISTRADOR DE INICIO DE SESIÓN -----------
+    # ----------- LOGIN MANAGER -----------
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
     
-    # -------------------- RUTA DE INICIO PÚBLICA --------------------
-    # CORRECCIÓN: Se actualiza la ruta de inicio para limitar a 12 productos
+    # -------------------- PUBLIC HOME ROUTE --------------------
+    # CORRECTION: The home route is updated to limit to 12 products
     @public_bp.route('/')
     @public_bp.route('/index')
     def index():
-        productos = Product.query.order_by(Product.id.desc()).limit(12).all()
-        testimonios = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
-        return render_template('public/index.html', productos=productos, testimonios=testimonios)
+        products = Product.query.order_by(Product.id.desc()).limit(12).all()
+        testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
+        return render_template('public/index.html', products=products, testimonials=testimonials)
 
-    # ----------- FIN DE LA FÁBRICA DE APLICACIONES -----------
+    # ----------- END OF APPLICATION FACTORY -----------
     return app
 
-# -------------------- ESTABLECER CONTRASEÑA DE ADMINISTRADOR --------------------
+# -------------------- SET ADMIN PASSWORD --------------------
 def set_admin_password(app, new_password):
     with app.app_context():
         admin_user = User.query.filter_by(username='admin').first()
         if admin_user:
             admin_user.password_hash = generate_password_hash(new_password)
             db.session.commit()
-            print("Contraseña actualizada para 'admin'.")
+            print("Password updated for 'admin'.")
         else:
-            print("Usuario 'admin' no encontrado.")
+            print("User 'admin' not found.")
 
-# -------------------- EJECUCIÓN PRINCIPAL (SOLO PARA DESARROLLO LOCAL) --------------------
+# -------------------- MAIN EXECUTION (FOR LOCAL DEVELOPMENT ONLY) --------------------
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():

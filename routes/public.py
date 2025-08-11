@@ -10,7 +10,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 # Importaciones de aplicaciones locales
-from models import Producto, Categoria, Subcategoria, Articulo, ContactMessage, Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+from models import (
+    Producto, Categoria, Subcategoria, Articulo, ContactMessage,
+    Testimonial, Advertisement, Afiliado, EstadisticaAfiliado, AdsenseConfig
+)
 from forms import PublicTestimonialForm
 from extensions import db
 
@@ -23,9 +26,14 @@ bp = Blueprint('publico', __name__)
 # Configurar el cliente OpenAI
 # Este bloque inicializa el cliente de OpenAI si la clave está disponible.
 try:
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY no está configurada en el entorno.")
+    
+    openai_client = OpenAI(api_key=api_key)
+
 except Exception as e:
-    print(f"Error al inicializar el cliente OpenAI en public.py: {e}.")
+    print(f"Error al inicializar el cliente OpenAI en public.py: {e}")
     openai_client = None
 
 # --- Funciones auxiliares para herramientas de chatbot ---

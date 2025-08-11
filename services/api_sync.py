@@ -1,12 +1,12 @@
 import requests
 from app import db
-from models import Product, Subcategoria
+from models import Product, Subcategory
 from utils import slugify
 
 def fetch_and_update_products_from_external_api(api_url):
     """
-    Fetches and updates products from an external API.
-    Handles both existing product updates and new product additions.
+    Obtiene y actualiza productos desde una API externa.
+    Maneja tanto las actualizaciones de productos existentes como las adiciones de nuevos productos.
     """
     try:
         # --- REAL WORLD SCENARIO (uncomment and modify for actual API integration) ---
@@ -25,8 +25,6 @@ def fetch_and_update_products_from_external_api(api_url):
         raise ValueError(f"Error al parsear la respuesta de la API como JSON: {e}")
 
     # --- SIMULATED EXTERNAL API RESPONSE (for demonstration - REMOVE IN PRODUCTION) ---
-    # This section is for development/testing without a real API.
-    # In a real app, you would use the 'external_data' from the 'REAL WORLD SCENARIO' block.
     if "platformA" in api_url:
         simulated_external_products = [
             {
@@ -94,40 +92,40 @@ def fetch_and_update_products_from_external_api(api_url):
         ]
 
     updated_count = 0
-    default_subcategory = Subcategoria.query.first()
+    default_subcategory = Subcategory.query.first()
 
     for external_p_data in simulated_external_products:
-        product = Producto.query.filter_by(external_id=external_p_data["external_id"]).first()
+        product = Product.query.filter_by(external_id=external_p_data["external_id"]).first()
         try:
             processed_price = float(external_p_data['external_price'].replace('$', '').replace('€', '').replace(',', ''))
         except ValueError:
             print(f"Advertencia: No se pudo convertir el precio '{external_p_data['external_price']}' para el producto '{external_p_data['name']}'. Se usará 0.0.")
             processed_price = 0.0
 
-        if product: # Corrected: 'Si el producto:' to 'if product:'
-            product.nombre = external_p_data['name'] # Corrected: 'nombre' to 'name' based on external_p_data keys
-            product.slug = slugify(external_p_data['name']) # Corrected: 'nombre' to 'name'
-            product.precio = processed_price
-            product.descripcion = external_p_data['external_description']
-            product.imagen = external_p_data['external_image']
+        if product: # Corregido: 'Si el producto:' a 'if product:'
+            product.name = external_p_data['name'] # Corregido: 'nombre' a 'name'
+            product.slug = slugify(external_p_data['name']) # Corregido: 'nombre' a 'name'
+            product.price = processed_price # Corregido: 'producto.precio' a 'product.price'
+            product.description = external_p_data['external_description']
+            product.image = external_p_data['external_image']
             product.link = external_p_data['external_link']
             updated_count += 1
-        else: # Corrected: 'más:' to 'else:'
-            if not default_subcategory: # Corrected: 'Si no' to 'if not'
+        else: # Corregido: 'más:' a 'else:'
+            if not default_subcategory: # Corregido: 'si no' a 'if not'
                 print("Advertencia: No hay subcategorías definidas. No se pueden añadir nuevos productos de la API.")
-                continue
+                continue # Corregido: 'continuar'
 
-            new_product = Producto(
-                nombre=external_p_data['name'], # Corrected: 'número' to 'name'
-                slug=slugify(external_p_data['name']), # Corrected: 'número' to 'name'
-                precio=processed_price,
-                descripcion=external_p_data['external_description'],
-                imagen=external_p_data['external_image'],
-                link=external_p_data['external_link'], # Corrected: 'enlace' to 'link'
-                subcategoria_id=default_subcategory.id, # Using subcategoria_id, as categoria_id is on Categoria, not Producto
+            new_product = Product( # Corregido: 'Producto' a 'Product'
+                name=external_p_data['name'], # Corregido: 'nombre' a 'name'
+                slug=slugify(external_p_data['name']), # Corregido: 'nombre' a 'name'
+                price=processed_price, # Corregido: 'precio' a 'price'
+                description=external_p_data['external_description'],
+                image=external_p_data['external_image'],
+                link=external_p_data['external_link'],
+                subcategory_id=default_subcategory.id,
                 external_id=external_p_data['external_id']
             )
             db.session.add(new_product)
             updated_count += 1
-    db.session.commit()
-    return updated_count # Corrected: 'Devolver updated_count' to 'return updated_count'
+    db.session.commit() # Corregido: 'db.sesión.commit()' a 'db.session.commit()'
+    return updated_count # Corregido: 'devolver updated_count' a 'return updated_count'

@@ -3,13 +3,13 @@
 import os
 import click
 from datetime import datetime, timezone
+from werkzeug.security import generate_password_hash
 
 # Third-party imports
 from flask import Flask, render_template
 from flask_babel import Babel
 from flask_migrate import Migrate
 from flask_moment import Moment
-from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 import markdown
@@ -56,27 +56,30 @@ def create_app():
     Migrate(app, db)
     Babel(app, locale_selector=get_application_locale)
     Moment(app)
-    # The csrf variable was unused, so we removed the variable assignment.
     CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
     login_manager.login_message_category = 'info'
-
-    # --------------------------------------------------------------------------
-    # NOTE: The code block that dropped and recreated the database on each start
-    # has been removed. Use Flask-Migrate to manage database schema changes.
-    # --------------------------------------------------------------------------
-    with app.app_context():
-        # WARNING: db.create_all() is commented out to prevent conflicts with Flask-Migrate.
-        # db.create_all()
-        pass
     
-    # After correcting this, use Flask-Migrate for schema updates.
-    # Commands:
-    # 1. flask db init (only the first time)
-    # 2. flask db migrate -m "Your migration message"
-    # 3. flask db upgrade
-
+    # -------------------- STARTUP LOGIC --------------------
+    # NEW: Automatically creates the 'admin' user if it doesn't exist.
+    with app.app_context():
+        # Check if the 'admin' user exists in the database
+        admin_user_exists = User.query.filter_by(username='admin').first()
+        if not admin_user_exists:
+            # If not, create the user with a secure password hash.
+            # We are using 'admin123' as a default password for the first time.
+            admin_user = User(
+                username='admin',
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True
+            )
+            db.session.add(admin_user)
+            db.session.commit()
+            print("✔ Usuario administrador 'admin' creado con la contraseña 'admin123'.")
+        else:
+            print("ℹ️ El usuario administrador 'admin' ya existe.")
+    
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp
     from routes.public import bp as public_bp
@@ -132,7 +135,7 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- CUSTOM CLI COMMANDS -----------
+    # ----------- CUSTOM CLI COMMANDS (unchanged) -----------
     @app.cli.command('seed-db')
     @click.with_appcontext
     def seed_initial_data():

@@ -10,12 +10,20 @@ from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
 
 # Importaciones de aplicaciones locales
-from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic, db
-from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
+from models import (
+    User, Product, Category, Subcategory, Article, SyncInfo,
+    SocialMediaLink, ContactMessage, Testimonial as Testimonio,
+    Afiliado, AffiliateStatistic, db
+)
+from forms import (
+    LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm,
+    ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
+)
 from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
 
 # Decorador personalizado para garantizar que el usuario sea un administrador
 def admin_required(f):

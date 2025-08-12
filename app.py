@@ -1,19 +1,20 @@
 # app.py
-# Importaciones de bibliotecas estándar
+# Standard library imports
 import os
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
+import click
+import markdown
 
-# Importaciones de terceros
-from flask import Flask, render_template
-from flask_babel import Babel
+# Third-party imports
+from flask import Flask, render_template, request
+from flask_babel import Babel, lazy_gettext as _l
 from flask_migrate import Migrate
 from flask_moment import Moment
 from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
-import markdown
 
-# Importaciones de aplicaciones locales
+# Local application imports
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Category, Subcategory,
@@ -21,7 +22,7 @@ from models import (
 )
 from utils import slugify
 
-# Para formato de moneda
+# For currency formatting
 from babel.numbers import format_currency as babel_format_currency
 
 # -------------------- LOAD ENVIRONMENT VARIABLES --------------------
@@ -31,7 +32,8 @@ load_dotenv()
 # -------------------- FLASK-BABEL CONFIGURATION --------------------
 def get_application_locale():
     # This function determines the 'locale' for Flask-Babel
-    return 'es'
+    # The language is 'es' by default unless a browser locale is detected.
+    return request.accept_languages.best_match(['es', 'en']) or 'es'
 
 # -------------------- INJECT GLOBAL DATA --------------------
 def inject_social_media_links():
@@ -58,15 +60,18 @@ def create_app():
     CSRFProtect(app)
 
     login_manager.login_view = 'admin.admin_login'
+    login_manager.login_message = _l('Please log in to access this page.')
     login_manager.login_message_category = 'info'
     
     # -------------------- STARTUP LOGIC --------------------
     # NEW: Automatically creates the 'admin' user if it doesn't exist.
+    # This is run with the application context, but is separate from the CLI command.
     with app.app_context():
         print("--- DIAGNÓSTICO DE INICIO ---")
         print(f"URL de la base de datos: {app.config['SQLALCHEMY_DATABASE_URI']}")
         try:
             # Check if the 'admin' user exists in the database
+            # This check will fail if the 'users' table doesn't exist yet, which is expected before migrations
             admin_user_exists = User.query.filter_by(username='admin').first()
             if not admin_user_exists:
                 print("❌ El usuario 'admin' no se encontró. Creando...")
@@ -141,16 +146,21 @@ def create_app():
             return value.strftime(format)
         return value
 
-    # ----------- CUSTOM CLI COMMANDS (unchanged) -----------
+    # ----------- CUSTOM CLI COMMANDS -----------
+    # The '@click.with_appcontext' decorator is crucial for the command
+    # to access the application's configuration and database.
     @app.cli.command('seed-db')
-    @app.cli.with_appcontext
+    @click.with_appcontext
     def seed_initial_data():
         """Crea datos iniciales para la aplicación si no existe."""
         print(" ⚙️ Creación de datos iniciales...")
 
+        # Aquí verificamos si la tabla 'users' ya tiene datos
         if User.query.first():
             print(" ✅ Los usuarios ya existen. Omitir la creación inicial de datos.")
             return
+
+        # Aquí se agrega la lógica para crear un usuario administrador y un afiliado de prueba
         admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
         db.session.add(admin_user)
 
@@ -242,8 +252,6 @@ def create_app():
         db.session.commit()
         print("✅ Initial data created.")
 
-    app.cli.add_command(seed_initial_data)
-
     # ----------- LOGIN MANAGER -----------
     @login_manager.user_loader
     def load_user(user_id):
@@ -251,8 +259,9 @@ def create_app():
     
     # -------------------- PUBLIC HOME ROUTE --------------------
     # CORRECTION: The home route is updated to limit to 12 products
-    @public_bp.route('/')
-    @public_bp.route('/index')
+    # This assumes 'routes.public' is imported correctly
+    @app.route('/')
+    @app.route('/index')
     def index():
         products = Product.query.order_by(Product.id.desc()).limit(12).all()
         testimonials = Testimonial.query.filter_by(is_visible=True).order_by(Testimonial.id.desc()).all()
@@ -261,20 +270,7 @@ def create_app():
     # ----------- END OF APPLICATION FACTORY -----------
     return app
 
-# -------------------- SET ADMIN PASSWORD --------------------
-def set_admin_password(app, new_password):
-    with app.app_context():
-        admin_user = User.query.filter_by(username='admin').first()
-        if admin_user:
-            admin_user.password_hash = generate_password_hash(new_password)
-            db.session.commit()
-            print("Password updated for 'admin'.")
-        else:
-            print("User 'admin' not found.")
-
 # -------------------- MAIN EXECUTION (FOR LOCAL DEVELOPMENT ONLY) --------------------
 if __name__ == "__main__":
     app = create_app()
-    with app.app_context():
-        pass
     app.run(debug=True)

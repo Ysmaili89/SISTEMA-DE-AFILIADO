@@ -2,6 +2,7 @@
 from app import create_app
 from extensions import db
 from models import User
+from werkzeug.security import generate_password_hash
 
 # --- Configura un nombre de usuario y contraseña para el nuevo administrador ---
 ADMIN_USERNAME = 'administrador'
@@ -12,24 +13,25 @@ app = create_app()
 
 with app.app_context():
     print("Verificando si el usuario administrador ya existe...")
+    
     # Busca un usuario existente con el nombre de administrador
-    # Corregido: Se usa 'username' y la sintaxis de 'filter_by' es correcta
     admin_user = User.query.filter_by(username=ADMIN_USERNAME).first()
 
-    if admin_user:  # Corregido: Se usa 'if' en lugar de 'Si'
+    if admin_user:
         print(f"El usuario '{ADMIN_USERNAME}' ya existe. Actualizando contraseña y permisos...")
-        admin_user.set_password(ADMIN_PASSWORD)
-        admin_user.is_admin = True  # Corregido: Se usa 'True' en lugar de 'Verdadero'
-        db.session.commit()  # Corregido: Se eliminó el espacio en 'session'
+        admin_user.password_hash = generate_password_hash(ADMIN_PASSWORD)
+        admin_user.is_admin = True
+        db.session.commit()
         print(f"Usuario '{ADMIN_USERNAME}' actualizado exitosamente.")
-    else:  # Corregido: Se usa 'else' en lugar de 'más'
+    else:
         print(f"Creando nuevo usuario administrador '{ADMIN_USERNAME}'...")
-        # Corregido: Se usa el nombre de la clase 'User' y el atributo 'username'
+        
+        # Crea un nuevo usuario
         new_admin = User(username=ADMIN_USERNAME, is_admin=True)
-        # Usa el método set_password para hashear la contraseña correctamente
-        new_admin.set_password(ADMIN_PASSWORD)
+        # Hashea la contraseña y la asigna al campo password_hash
+        new_admin.password_hash = generate_password_hash(ADMIN_PASSWORD)
         
         db.session.add(new_admin)
-        db.session.commit()  # Corregido: Se eliminó el espacio en 'session'
+        db.session.commit()
         print(f"Usuario '{ADMIN_USERNAME}' creado exitosamente con permisos de administrador.")
     print("Script terminado.")

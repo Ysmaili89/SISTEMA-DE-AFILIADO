@@ -15,6 +15,8 @@ from models import (
     SocialMediaLink, ContactMessage, Testimonial as Testimonio,
     Afiliado, AffiliateStatistic, db
 )
+
+
 from forms import (
     LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm,
     ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
@@ -23,6 +25,7 @@ from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
 
 
 # Decorador personalizado para garantizar que el usuario sea un administrador

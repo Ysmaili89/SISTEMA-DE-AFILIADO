@@ -13,10 +13,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from models import (
     User, Product, Category, Subcategory, Article, SyncInfo,
     SocialMediaLink, ContactMessage, Testimonial as Testimonio,
-    Afiliado, AffiliateStatistic, db
+    Affiliate, AffiliateStatistic, db
 )
-
-
 from forms import (
     LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm,
     ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
@@ -25,8 +23,6 @@ from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
-
-
 
 # Decorador personalizado para garantizar que el usuario sea un administrador
 def admin_required(f):
@@ -39,6 +35,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# --- Rutas de Autenticación ---
 @bp.route('/login', methods=['GET', 'POST'])
 def admin_login():
     if current_user.is_authenticated and current_user.is_admin:
@@ -48,22 +45,15 @@ def admin_login():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
-        print(f"Intentando iniciar sesión para el nombre de usuario: {username}")
         user = User.query.filter_by(username=username).first()
-        if user:
-            print(f"Usuario encontrado: {user.username}, Es admin: {user.is_admin}")
-            password_check = check_password_hash(user.password_hash, password)
-            print(f"Resultado de la comprobación de contraseña: {password_check}")
-            if password_check:
-                if user.is_admin:
-                    login_user(user)
-                    flash('Inicio de sesión exitoso como administrador.', 'success')
-                    next_page = request.args.get('next')
-                    return redirect(next_page or url_for('admin.admin_dashboard'))
-                else:
-                    flash('Acceso denegado: No tienes permisos de administrador.', 'danger')
+        if user and check_password_hash(user.password_hash, password):
+            if user.is_admin:
+                login_user(user)
+                flash('Inicio de sesión exitoso como administrador.', 'success')
+                next_page = request.args.get('next')
+                return redirect(next_page or url_for('admin.admin_dashboard'))
             else:
-                flash('Nombre de usuario o contraseña incorrectos.', 'danger')
+                flash('Acceso denegado: No tienes permisos de administrador.', 'danger')
         else:
             flash('Nombre de usuario o contraseña incorrectos.', 'danger')
     return render_template('admin/admin_login.html', form=form)
@@ -83,7 +73,7 @@ def admin_dashboard():
     articles_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonio.query.filter_by(is_visible=False).count()
-    afiliados_count = Afiliado.query.count()
+    afiliados_count = Affiliate.query.count()
     estadisticas_afiliados_count = AffiliateStatistic.query.count()
 
     return render_template('admin/admin_dashboard.html',
@@ -95,18 +85,16 @@ def admin_dashboard():
                            afiliados_count=afiliados_count,
                            estadisticas_afiliados_count=estadisticas_afiliados_count)
 
-# --- Admin Products Management ---
+# --- Gestión de Productos ---
 @bp.route('/productos')
 @admin_required
 def admin_products():
     products = Product.query.all()
-
     category_lookup = {
         subcat.id: f"{cat.name} > {subcat.name}"
         for cat in Category.query.options(joinedload(Category.subcategories)).all()
         for subcat in cat.subcategories
     }
-
     products_for_display = []
     for p in products:
         products_for_display.append({
@@ -120,21 +108,17 @@ def admin_products():
             "external_id": p.external_id,
             "category_display_name": category_lookup.get(p.subcategory_id, 'Desconocida')
         })
-
     return render_template('admin/admin_products.html', products=products_for_display)
 
 @bp.route('/products/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_product():
     form = ProductForm()
-
     if form.validate_on_submit():
         selected_subcategory_id = form.subcategory.data.id if form.subcategory.data else None
-
         external_id_value = form.external_id.data.strip()
         if external_id_value == '':
             external_id_value = None
-
         new_product = Product(
             name=form.name.data,
             slug=slugify(form.name.data),
@@ -163,20 +147,16 @@ def admin_add_product():
 def admin_edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     form = ProductForm(obj=product)
-
     if form.validate_on_submit():
         selected_subcategory = form.subcategory.data
         product.subcategory_id = selected_subcategory.id if selected_subcategory else None
-
         external_id_value = form.external_id.data.strip()
         if external_id_value == '':
             external_id_value = None
-
         form.populate_obj(product)
         product.slug = slugify(product.name)
         product.external_id = external_id_value
         product.last_updated = datetime.now(timezone.utc)
-
         try:
             db.session.commit()
             flash('Producto actualizado exitosamente!', 'success')
@@ -202,7 +182,7 @@ def admin_delete_product(product_id):
         flash(f'Error al eliminar producto: {e}', 'danger')
     return redirect(url_for('admin.admin_products'))
 
-# --- Admin Categories Management ---
+# --- Gestión de Categorías y Subcategorías ---
 @bp.route('/categories')
 @admin_required
 def admin_categories():
@@ -218,7 +198,6 @@ def admin_add_category():
         if existing_category:
             flash('Error: Ya existe una categoría con ese nombre (o un slug similar).', 'danger')
             return render_template('admin/admin_add_edit_category.html', category_form=form)
-
         new_category = Category(name=form.name.data, slug=slugify(form.name.data))
         try:
             db.session.add(new_category)
@@ -231,7 +210,6 @@ def admin_add_category():
         except Exception as e:
             db.session.rollback()
             flash(f'Error al añadir categoría: {e}', 'danger')
-
     return render_template('admin/admin_add_edit_category.html', category_form=form)
 
 @bp.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
@@ -278,7 +256,6 @@ def admin_add_subcategory(category_id):
         if existing_subcategory:
             flash(f'Error: Ya existe una subcategoría con el nombre "{form.name.data}" en esta categoría. Por favor, elige un nombre diferente.', 'danger')
             return render_template('admin/admin_add_edit_subcategory.html', form=form, category=category)
-
         new_subcategory = Subcategory(name=form.name.data, slug=new_slug, category_id=category.id)
         try:
             db.session.add(new_subcategory)
@@ -327,7 +304,7 @@ def admin_delete_subcategory(category_id, subcategory_id):
         flash(f'Error al eliminar subcategoría: {e}', 'danger')
     return redirect(url_for('admin.admin_categories'))
 
-# --- Admin Articles (Guias) Management ---
+# --- Gestión de Artículos (Guías) ---
 @bp.route('/articles')
 @admin_required
 def admin_articles():
@@ -393,7 +370,7 @@ def admin_delete_article(article_id):
         flash(f'Error al eliminar artículo: {e}', 'danger')
     return redirect(url_for('admin.admin_articles'))
 
-# --- Admin API Products Sync ---
+# --- Sincronización de Productos API ---
 @bp.route('/api_products')
 @admin_required
 def admin_api_products():
@@ -420,15 +397,12 @@ def admin_sync_api_products():
             sync_info = SyncInfo(last_sync_time="N/A", last_sync_count=0, last_synced_api_url="N/A")
             db.session.add(sync_info)
             db.session.commit()
-
         try:
             updated_count = fetch_and_update_products_from_external_api(api_url)
-
             sync_info.last_sync_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             sync_info.last_sync_count = updated_count
             sync_info.last_synced_api_url = api_url
             db.session.commit()
-
             flash(f'Sincronización API completada. Se actualizaron/añadieron {updated_count} productos.', 'success')
         except Exception as e:
             flash(f'Error durante la sincronización API. Detalles: {str(e)}', 'danger')
@@ -454,7 +428,7 @@ PLATFORM_ICONS = {
     'Reddit': 'fab fa-reddit-alien',
 }
 
-# --- Admin Social Media Management ---
+# --- Gestión de Redes Sociales ---
 @bp.route('/social_media')
 @admin_required
 def admin_social_media():
@@ -468,7 +442,6 @@ def admin_add_social_media():
     if form.validate_on_submit():
         platform_name = form.platform.data
         icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
-
         new_link = SocialMediaLink(
             platform=platform_name,
             url=form.url.data,
@@ -494,11 +467,9 @@ def admin_add_social_media():
 def admin_edit_social_media(link_id):
     link = SocialMediaLink.query.get_or_404(link_id)
     form = SocialMediaForm(obj=link)
-
     if form.validate_on_submit():
         platform_name = form.platform.data
         icon_class = PLATFORM_ICONS.get(platform_name, 'fas fa-link')
-
         form.populate_obj(link)
         link.icon_class = icon_class
         try:
@@ -525,7 +496,7 @@ def admin_delete_social_media(link_id):
         flash(f'Error al eliminar enlace: {e}', 'danger')
     return redirect(url_for('admin.admin_social_media'))
 
-# --- Admin Contact Messages Management ---
+# --- Gestión de Mensajes de Contacto ---
 @bp.route('/messages')
 @admin_required
 def admin_messages():
@@ -537,7 +508,6 @@ def admin_messages():
 def admin_view_message(message_id):
     message = ContactMessage.query.get_or_404(message_id)
     form = ContactMessageAdminForm(obj=message)
-
     if not message.is_read:
         message.is_read = True
         try:
@@ -545,18 +515,15 @@ def admin_view_message(message_id):
         except Exception as e:
             db.session.rollback()
             flash(f'Error al marcar mensaje como leído: {e}', 'danger')
-
     if form.validate_on_submit():
         message.is_read = form.is_read.data
         message.is_archived = form.is_archived.data
-
         if form.response_text.data:
             message.response_text = form.response_text.data
             message.response_timestamp = datetime.now(timezone.utc)
         else:
             message.response_text = None
             message.response_timestamp = None
-
         try:
             db.session.commit()
             flash('Mensaje actualizado exitosamente!', 'success')
@@ -564,7 +531,6 @@ def admin_view_message(message_id):
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar mensaje: {e}', 'danger')
-
     return render_template('admin/admin_view_message.html', message=message, form=form)
 
 @bp.route('/messages/delete/<int:message_id>', methods=['POST'])
@@ -634,7 +600,7 @@ def admin_dislike_message(message_id):
         flash(f'Error al añadir no me gusta: {e}', 'danger')
     return redirect(url_for('admin.admin_view_message', message_id=message_id))
 
-# --- Admin Testimonials Management ---
+# --- Gestión de Testimonios ---
 @bp.route('/testimonials')
 @admin_required
 def admin_testimonials():
@@ -667,11 +633,9 @@ def admin_add_testimonial():
 def admin_edit_testimonial(testimonial_id):
     testimonial = Testimonio.query.get_or_404(testimonial_id)
     form = TestimonialForm(obj=testimonial)
-
     if request.method == 'GET':
         form.likes.data = testimonial.likes
         form.dislikes.data = testimonial.dislikes
-
     if form.validate_on_submit():
         form.populate_obj(testimonial)
         try:
@@ -736,3 +700,16 @@ def admin_dislike_testimonial(testimonial_id):
         db.session.rollback()
         flash(f'Error al añadir no me gusta al testimonio: {e}', 'danger')
     return redirect(url_for('admin.admin_testimonials'))
+
+# --- Gestión de Afiliados (nuevas rutas) ---
+@bp.route('/afiliados')
+@admin_required
+def listar_afiliados():
+    afiliados = Affiliate.query.all()
+    return render_template('admin/afiliados.html', afiliados=afiliados)
+
+@bp.route('/affiliate/<int:id>')
+@admin_required
+def detalle_afiliado(id):
+    afiliado = Affiliate.query.get_or_404(id)
+    return render_template('admin/afiliado_detalle.html', afiliado=afiliado)

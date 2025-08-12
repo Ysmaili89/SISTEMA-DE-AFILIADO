@@ -64,21 +64,28 @@ def create_app():
     # -------------------- STARTUP LOGIC --------------------
     # NEW: Automatically creates the 'admin' user if it doesn't exist.
     with app.app_context():
-        # Check if the 'admin' user exists in the database
-        admin_user_exists = User.query.filter_by(username='admin').first()
-        if not admin_user_exists:
-            # If not, create the user with a secure password hash.
-            # We are using 'admin123' as a default password for the first time.
-            admin_user = User(
-                username='admin',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-            print("✔ Usuario administrador 'admin' creado con la contraseña 'admin123'.")
-        else:
-            print("ℹ️ El usuario administrador 'admin' ya existe.")
+        print("--- DIAGNÓSTICO DE INICIO ---")
+        print(f"URL de la base de datos: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        try:
+            # Check if the 'admin' user exists in the database
+            admin_user_exists = User.query.filter_by(username='admin').first()
+            if not admin_user_exists:
+                print("❌ El usuario 'admin' no se encontró. Creando...")
+                # If not, create the user with a secure password hash.
+                admin_user = User(
+                    username='admin',
+                    password_hash=generate_password_hash('admin123'),
+                    is_admin=True
+                )
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Usuario administrador 'admin' creado con la contraseña 'admin123'.")
+            else:
+                print("✅ El usuario administrador 'admin' ya existe.")
+        except Exception as e:
+            print(f"⚠️ Error durante el diagnóstico de la base de datos: {e}")
+            print("Asegúrate de que tu base de datos esté accesible y que las migraciones se hayan aplicado.")
+        print("--- FIN DEL DIAGNÓSTICO ---")
     
     # ----------- BLUEPRINTS -----------
     from routes.admin import bp as admin_bp

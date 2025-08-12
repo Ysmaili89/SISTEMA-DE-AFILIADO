@@ -10,7 +10,7 @@ from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
 
 # Importaciones de aplicaciones locales
-from models import User, Product, Category, Subcategory, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic, db
+from models import User, Product, Category, Subcategory, Article, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic, db
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
 from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
@@ -69,7 +69,7 @@ def admin_logout():
 def admin_dashboard():
     products_count = Product.query.count()
     categories_count = Category.query.count()
-    articulos_count = Articulo.query.count()
+    articles_count = Article.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonio.query.filter_by(is_visible=False).count()
     afiliados_count = Afiliado.query.count()
@@ -78,7 +78,7 @@ def admin_dashboard():
     return render_template('admin/admin_dashboard.html',
                            products_count=products_count,
                            categories_count=categories_count,
-                           articulos_count=articulos_count,
+                           articles_count=articles_count,
                            unread_messages_count=unread_messages_count,
                            pending_testimonials_count=pending_testimonials_count,
                            afiliados_count=afiliados_count,
@@ -111,7 +111,6 @@ def admin_products():
         })
 
     return render_template('admin/admin_products.html', products=products_for_display)
-
 
 @bp.route('/products/add', methods=['GET', 'POST'])
 @admin_required
@@ -321,15 +320,15 @@ def admin_delete_subcategory(category_id, subcategory_id):
 @bp.route('/articles')
 @admin_required
 def admin_articles():
-    articulos = Articulo.query.order_by(Articulo.date_posted.desc()).all()
-    return render_template('admin/admin_articles.html', articulos=articulos)
+    articles = Article.query.order_by(Article.date_posted.desc()).all()
+    return render_template('admin/admin_articles.html', articles=articles)
 
 @bp.route('/articles/add', methods=['GET', 'POST'])
 @admin_required
 def admin_add_article():
     form = ArticleForm()
     if form.validate_on_submit():
-        new_article = Articulo(
+        new_article = Article(
             title=form.title.data,
             slug=slugify(form.title.data),
             content=form.content.data,
@@ -353,7 +352,7 @@ def admin_add_article():
 @bp.route('/articles/edit/<int:article_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_article(article_id):
-    article = Articulo.query.get_or_404(article_id)
+    article = Article.query.get_or_404(article_id)
     form = ArticleForm(obj=article)
     if form.validate_on_submit():
         form.populate_obj(article)
@@ -373,7 +372,7 @@ def admin_edit_article(article_id):
 @bp.route('/articles/delete/<int:article_id>', methods=['POST'])
 @admin_required
 def admin_delete_article(article_id):
-    article = Articulo.query.get_or_404(article_id)
+    article = Article.query.get_or_404(article_id)
     try:
         db.session.delete(article)
         db.session.commit()
@@ -515,7 +514,6 @@ def admin_delete_social_media(link_id):
         flash(f'Error al eliminar enlace: {e}', 'danger')
     return redirect(url_for('admin.admin_social_media'))
 
-
 # --- Admin Contact Messages Management ---
 @bp.route('/messages')
 @admin_required
@@ -624,7 +622,6 @@ def admin_dislike_message(message_id):
         db.session.rollback()
         flash(f'Error al añadir no me gusta: {e}', 'danger')
     return redirect(url_for('admin.admin_view_message', message_id=message_id))
-
 
 # --- Admin Testimonials Management ---
 @bp.route('/testimonials')

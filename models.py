@@ -187,7 +187,7 @@ class AffiliateStatistic(db.Model):
     affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliates.id'), nullable=False)
     date = db.Column(db.Date, default=date.today)
     clicks = db.Column(db.Integer, default=0)
-    registrations = db.Column(db.Integer, default=0)
+    signups = db.Column(db.Integer, default=0)
     sales = db.Column(db.Integer, default=0)
     commission_generated = db.Column(db.Float, default=0.0)
     is_paid = db.Column(db.Boolean, default=False)
@@ -199,7 +199,7 @@ class AffiliateStatistic(db.Model):
 
 # ---
 class AdsenseConfig(db.Model):
-    """Modelo para la configuración de AdSense."""
+    """Model for AdSense configuration."""
     __tablename__ = 'adsense_configs'
     id = db.Column(db.Integer, primary_key=True)
     adsense_client_id = db.Column(db.String(100), nullable=False)

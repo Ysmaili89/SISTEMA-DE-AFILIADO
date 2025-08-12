@@ -10,19 +10,15 @@ from flask import Blueprint, render_template, flash, redirect, url_for, request
 from flask_login import login_user, logout_user, login_required, current_user
 
 # Importaciones de aplicaciones locales
-# Se eliminaron los modelos que no se estaban utilizando en este archivo.
-from models import User, Product, Categoría, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic
+from models import User, Product, Category, Subcategoria, Articulo, SyncInfo, SocialMediaLink, ContactMessage, Testimonio, Afiliado, AffiliateStatistic
 from extensions import db
-# Se eliminaron los formularios que no se estaban utilizando en este archivo.
 from forms import LoginForm, ProductForm, CategoryForm, SubCategoryForm, ArticleForm, ApiSyncForm, SocialMediaForm, ContactMessageAdminForm, TestimonialForm
-# Se eliminó la importación de `admin_required` de `utils` ya que se define localmente.
 from utils import slugify
 from services.api_sync import fetch_and_update_products_from_external_api
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Decorador personalizado para garantizar que el usuario sea un administrador
-# Esta es la única definición de esta función.
 def admin_required(f):
     @functools.wraps(f)
     @login_required
@@ -73,7 +69,7 @@ def admin_logout():
 @admin_required
 def admin_dashboard():
     products_count = Product.query.count()
-    categorias_count = Categoría.query.count()
+    categorias_count = Category.query.count()
     articulos_count = Articulo.query.count()
     unread_messages_count = ContactMessage.query.filter_by(is_read=False).count()
     pending_testimonials_count = Testimonio.query.filter_by(is_visible=False).count()
@@ -97,7 +93,7 @@ def admin_products():
     
     category_lookup = {
         subcat.id: f"{cat.name} > {subcat.name}" 
-        for cat in Categoría.query.options(joinedload(Categoría.subcategories)).all()
+        for cat in Category.query.options(joinedload(Category.subcategories)).all()
         for subcat in cat.subcategories
     }
 
@@ -201,7 +197,7 @@ def admin_delete_product(product_id):
 @bp.route('/categories')
 @admin_required
 def admin_categories():
-    categorias = Categoría.query.options(joinedload(Categoría.subcategories)).all()
+    categorias = Category.query.options(joinedload(Category.subcategories)).all()
     return render_template('admin/admin_categories.html', categorias=categorias)
 
 @bp.route('/categories/add', methods=['GET', 'POST'])
@@ -209,12 +205,12 @@ def admin_categories():
 def admin_add_category():
     form = CategoryForm()
     if form.validate_on_submit():
-        existing_category = Categoría.query.filter_by(slug=slugify(form.name.data)).first()
+        existing_category = Category.query.filter_by(slug=slugify(form.name.data)).first()
         if existing_category:
             flash('Error: Ya existe una categoría con ese nombre (o un slug similar).', 'danger')
             return render_template('admin/admin_add_edit_category.html', category_form=form)
 
-        new_category = Categoría(name=form.name.data, slug=slugify(form.name.data))
+        new_category = Category(name=form.name.data, slug=slugify(form.name.data))
         try:
             db.session.add(new_category)
             db.session.commit()
@@ -232,7 +228,7 @@ def admin_add_category():
 @bp.route('/categories/edit/<int:category_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_category(category_id):
-    category = Categoría.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     form = CategoryForm(obj=category)
     if form.validate_on_submit():
         form.populate_obj(category)
@@ -252,7 +248,7 @@ def admin_edit_category(category_id):
 @bp.route('/categories/delete/<int:category_id>', methods=['POST'])
 @admin_required
 def admin_delete_category(category_id):
-    category = Categoría.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     try:
         db.session.delete(category)
         db.session.commit()
@@ -265,7 +261,7 @@ def admin_delete_category(category_id):
 @bp.route('/categories/<int:category_id>/add_subcategory', methods=['GET', 'POST'])
 @admin_required
 def admin_add_subcategory(category_id):
-    category = Categoría.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     form = SubCategoryForm()
     if form.validate_on_submit():
         new_slug = slugify(form.name.data)
@@ -291,7 +287,7 @@ def admin_add_subcategory(category_id):
 @bp.route('/categories/<int:category_id>/edit_subcategory/<int:subcategory_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_edit_subcategory(category_id, subcategory_id):
-    category = Categoría.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     subcategory = Subcategoria.query.filter_by(id=subcategory_id, categoria_id=category_id).first_or_404()
     form = SubCategoryForm(obj=subcategory)
     if form.validate_on_submit():
@@ -399,10 +395,10 @@ def admin_api_products():
         db.session.commit()
     form = ApiSyncForm()
     return render_template('admin/admin_api_products.html',
-                             last_sync_time=sync_info.last_sync_time,
-                             last_sync_count=sync_info.last_sync_count,
-                             last_synced_api_url=sync_info.last_synced_api_url,
-                             form=form)
+                           last_sync_time=sync_info.last_sync_time,
+                           last_sync_count=sync_info.last_sync_count,
+                           last_synced_api_url=sync_info.last_synced_api_url,
+                           form=form)
 
 @bp.route('/api_products/sync', methods=['POST'])
 @admin_required

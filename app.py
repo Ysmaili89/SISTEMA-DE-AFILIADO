@@ -1,11 +1,10 @@
 # app.py
-# Standard library imports
+# Importaciones de bibliotecas estándar
 import os
-import click
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 
-# Third-party imports
+# Importaciones de terceros
 from flask import Flask, render_template
 from flask_babel import Babel
 from flask_migrate import Migrate
@@ -14,7 +13,7 @@ from dotenv import load_dotenv
 from flask_wtf.csrf import CSRFProtect
 import markdown
 
-# Local application imports
+# Importaciones de aplicaciones locales
 from extensions import db, login_manager
 from models import (
     SocialMediaLink, User, Category, Subcategory,
@@ -22,7 +21,7 @@ from models import (
 )
 from utils import slugify
 
-# For currency formatting
+# Para formato de moneda
 from babel.numbers import format_currency as babel_format_currency
 
 # -------------------- LOAD ENVIRONMENT VARIABLES --------------------
@@ -144,15 +143,14 @@ def create_app():
 
     # ----------- CUSTOM CLI COMMANDS (unchanged) -----------
     @app.cli.command('seed-db')
-    @click.with_appcontext
+    @app.cli.with_appcontext
     def seed_initial_data():
-        """Creates initial data for the application if it does not exist."""
-        print("⚙️ Creating initial data...")
-        
-        if User.query.first():
-            print("ℹ️ Users already exist. Skipping initial data creation.")
-            return
+        """Crea datos iniciales para la aplicación si no existe."""
+        print(" ⚙️ Creación de datos iniciales...")
 
+        if User.query.first():
+            print(" ✅ Los usuarios ya existen. Omitir la creación inicial de datos.")
+            return
         admin_user = User(username='admin', password_hash=generate_password_hash('adminpass'), is_admin=True)
         db.session.add(admin_user)
 
